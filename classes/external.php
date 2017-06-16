@@ -71,7 +71,7 @@ class external extends \external_api {
     public static function get_user_profile_returns() {
         return new \external_multiple_structure(
             new \external_single_structure(
-                ['id' => new \external_value(PARAM_INT, 'User id.'),
+                ['userid' => new \external_value(PARAM_INT, 'User id.'),
                  'language' => new \external_value(PARAM_TEXT, 'Communication language.'),
                  'firstaccess' => new \external_value(PARAM_INT, 'Original site access timestamp.'),
                  'lastaccess' => new \external_value(PARAM_INT, 'Last known site access timestamp.'),
@@ -84,7 +84,8 @@ class external extends \external_api {
                          'value' => new \external_value(PARAM_TEXT, 'Value of this field for this user.'),
                         ],
                         'datafield'
-                    )
+                    ),
+                    'datafields'
                  ),
                  'tags' => new \external_multiple_structure(
                     new \external_single_structure(
@@ -92,7 +93,8 @@ class external extends \external_api {
                          'description' => new \external_value(PARAM_TEXT, 'Description of this tag.'),
                         ],
                         'tag'
-                    )
+                    ),
+                    'tags'
                  ),
                  'badges' => new \external_multiple_structure(
                     new \external_single_structure(
@@ -102,11 +104,12 @@ class external extends \external_api {
                          'issuedtime' => new \external_value(PARAM_INT, 'Issued timestamp.'),
                         ],
                         'badge'
-                    )
+                    ),
+                    'badges'
                  ),
                  'courseenrolments' => new \external_multiple_structure(
                     new \external_single_structure(
-                        ['id' => new \external_value(PARAM_INT, 'Outcome id.'),
+                        ['courseid' => new \external_value(PARAM_INT, 'Course id.'),
                          'enroltime' => new \external_value(PARAM_INT, 'When enrolled in course timestamp.'),
                          'startime' => new \external_value(PARAM_INT, 'When started activity in course timestamp.'),
                          'endtime' => new \external_value(PARAM_INT, 'When ended course timestamp.'),
@@ -119,7 +122,8 @@ class external extends \external_api {
                                  'proficiency' => new \external_value(PARAM_TEXT, 'User proficiency of this competency.'),
                                 ],
                                 'competency'
-                            )
+                            ),
+                            'competencies'
                          ),
                          'outcomes' => new \external_multiple_structure(
                             new \external_single_structure(
@@ -129,15 +133,18 @@ class external extends \external_api {
                                  'proficiency' => new \external_value(PARAM_TEXT, 'User proficiency of this outcome.'),
                                 ],
                                 'outcome'
-                            )
+                            ),
+                            'outcomes'
                          ),
                         ],
                         'courseenrolment'
-                    )
+                    ),
+                    'courseenrolments'
                  ),
                 ],
                 'user'
-            )
+            ),
+            'users'
         );
     }
 
@@ -174,7 +181,7 @@ class external extends \external_api {
     public static function get_course_profile_returns() {
         return new \external_multiple_structure(
             new \external_single_structure(
-                ['id' => new \external_value(PARAM_INT, 'Course id'),
+                ['courseid' => new \external_value(PARAM_INT, 'Course id'),
                  'name' => new \external_value(PARAM_TEXT, 'Course name.'),
                  'description' => new \external_value(PARAM_TEXT, 'Course description.'),
                  'starttime' => new \external_value(PARAM_INT, 'Start of the course timestamp.'),
@@ -185,7 +192,8 @@ class external extends \external_api {
                          'description' => new \external_value(PARAM_TEXT, 'Description of this tag.'),
                         ],
                         'tag'
-                    )
+                    ),
+                    'tags'
                  ),
                  'outcomes' => new \external_multiple_structure(
                     new \external_single_structure(
@@ -194,7 +202,8 @@ class external extends \external_api {
                          'description' => new \external_value(PARAM_TEXT, 'Description of this outcome.'),
                         ],
                         'outcome'
-                    )
+                    ),
+                    'outcomes'
                  ),
                  'competencies' => new \external_multiple_structure(
                     new \external_single_structure(
@@ -203,7 +212,8 @@ class external extends \external_api {
                          'description' => new \external_value(PARAM_TEXT, 'Description of this competency.'),
                         ],
                         'competency'
-                    )
+                    ),
+                    'competencies'
                  ),
                  'badges' => new \external_multiple_structure(
                     new \external_single_structure(
@@ -212,11 +222,152 @@ class external extends \external_api {
                          'description' => new \external_value(PARAM_TEXT, 'Description of this badge.'),
                         ],
                         'badge'
-                    )
+                    ),
+                    'badges'
                  ),
                 ],
                 'course'
-            )
+            ),
+            'courses'
+        );
+    }
+
+    /**
+     * Describes the parameters for get_course_object_profile.
+     *
+     * @return \external_function_parameters
+     */
+    public static function get_course_object_profile_parameters() {
+        return new \external_function_parameters (
+            ['courseids' => new \external_multiple_structure(
+                new \external_value(PARAM_INT, 'course id'), 'Array of course ids', VALUE_DEFAULT, []),
+             'courseobjectids' => new \external_multiple_structure(
+                new \external_value(PARAM_INT, 'course id'), 'Array of course object ids', VALUE_DEFAULT, []),
+            ]
+        );
+    }
+
+    /**
+     * Returns the profile data for the requested course objects for the specified courses.
+     * If no courses are provided, all courses' object data will be returned.
+     * If no course objects are provided, all course objects wull be returned.
+     *
+     * @param array $courseids the course ids
+     * @param array $courseobjectids the course object ids
+     * @return array the course objects details
+     */
+    public static function get_course_object_profile($courseids = [], $courseobjectids = []) {
+        $result = [];
+        return $result;
+    }
+
+    /**
+     * Describes the get_course_profile return value.
+     *
+     * @return \external_single_structure
+     */
+    public static function get_course_object_profile_returns() {
+        return new \external_multiple_structure(
+            new \external_single_structure(
+                ['courseid' => new \external_value(PARAM_INT, 'Course id'),
+                 'courseobjects' => new \external_multiple_structure(
+                    new \external_single_structure(
+                        ['courseobjectid' => new \external_value(PARAM_INT, 'Course object id'),
+                         'name' => new \external_value(PARAM_TEXT, 'Course object name.'),
+                         'description' => new \external_value(PARAM_TEXT, 'Course object description.'),
+                         'type' => new \external_value(PARAM_TEXT, 'Course object type.'),
+                         'tags' => new \external_multiple_structure(
+                            new \external_single_structure(
+                                ['name' => new \external_value(PARAM_TEXT, 'Name of this tag.'),
+                                 'description' => new \external_value(PARAM_TEXT, 'Description of this tag.'),
+                                ],
+                                'tag'
+                            ),
+                            'tags'
+                         ),
+                         'outcomes' => new \external_multiple_structure(
+                            new \external_single_structure(
+                                ['id' => new \external_value(PARAM_INT, 'Outcome id.'),
+                                 'name' => new \external_value(PARAM_TEXT, 'Name of this outcome.'),
+                                 'description' => new \external_value(PARAM_TEXT, 'Description of this outcome.'),
+                                ],
+                                'outcome'
+                            ),
+                            'outcomes'
+                         ),
+                         'competencies' => new \external_multiple_structure(
+                            new \external_single_structure(
+                                ['id' => new \external_value(PARAM_INT, 'Competency id.'),
+                                 'name' => new \external_value(PARAM_TEXT, 'Name of this competency.'),
+                                 'description' => new \external_value(PARAM_TEXT, 'Description of this competency.'),
+                                ],
+                                'competency'
+                            ),
+                            'competencies'
+                         ),
+                        ],
+                        'course object'
+                    ),
+                    'courseobjects'
+                 ),
+                ],
+                'course'
+            ),
+            'courses'
+        );
+    }
+
+    /**
+     * Describes the parameters for get_user_activity.
+     *
+     * @return \external_function_parameters
+     */
+    public static function get_user_activity_parameters() {
+        return new \external_function_parameters (
+            ['userids' => new \external_multiple_structure(
+                new \external_value(PARAM_INT, 'user id'), 'Array of user ids', VALUE_DEFAULT, []),
+            ]
+        );
+    }
+
+    /**
+     * Returns the user activity data for the requested users.
+     * if no userss are provided, all users' activity data will be returned.
+     *
+     * @param array $userids the user ids
+     * @return array the user activity
+     */
+    public static function get_user_activity($userids = []) {
+        $result = [];
+        return $result;
+    }
+
+    /**
+     * Describes the get_course_profile return value.
+     *
+     * @return \external_single_structure
+     */
+    public static function get_user_activity_returns() {
+        return new \external_multiple_structure(
+            new \external_single_structure(
+                ['userid' => new \external_value(PARAM_INT, 'User id'),
+                 'events' => new \external_multiple_structure(
+                    new \external_single_structure(
+                        ['eventname' => new \external_value(PARAM_TEXT, 'Event name.'),
+                         'component' => new \external_value(PARAM_TEXT, 'Component name.'),
+                         'action' => new \external_value(PARAM_TEXT, 'The event action.'),
+                         'courseobjectid' => new \external_value(PARAM_INT, 'Course object id.'),
+                         'courseid' => new \external_value(PARAM_INT, 'Course id.'),
+                         'eventtime' => new \external_value(PARAM_INT, 'Event activity timestamp.'),
+                        ],
+                        'event'
+                    ),
+                    'events'
+                 ),
+                ],
+                'user'
+            ),
+            'users'
         );
     }
 }

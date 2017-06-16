@@ -29,20 +29,33 @@ $functions = [
     'local_globalfilter_get_user_profile' => [
         'classname'     => 'local_globalfilter\external',
         'methodname'    => 'get_user_profile',
-        'description'   => 'Returns the user profile data for the specified user.',
+        'description'   => 'Returns the user profile data for the specified users.',
         'type'          => 'read',
     ],
     'local_globalfilter_get_course_profile' => [
         'classname'     => 'local_globalfilter\external',
         'methodname'    => 'get_course_profile',
-        'description'   => 'Returns the course profile data for the specified course.',
+        'description'   => 'Returns the course profile data for the specified courses.',
+        'type'          => 'read',
+    ],
+    'local_globalfilter_get_course_object_profile' => [
+        'classname'     => 'local_globalfilter\external',
+        'methodname'    => 'get_course_object_profile',
+        'description'   => 'Returns the course object profile data for the specified course objects.',
+        'type'          => 'read',
+    ],
+    'local_globalfilter_get_user_activity' => [
+        'classname'     => 'local_globalfilter\external',
+        'methodname'    => 'get_user_activity',
+        'description'   => 'Returns the user activity data for the specified users.',
         'type'          => 'read',
     ],
 ];
 
 $services = [
     'Globalfilter web services' => [
-        'functions' => ['local_globalfilter_get_user_profile', 'local_globalfilter_get_course_profile'],
+        'functions' => ['local_globalfilter_get_user_profile', 'local_globalfilter_get_course_profile',
+            'local_globalfilter_get_course_object_profile', 'local_globalfilter_get_user_activity'],
         'enabled' => 1,
         'restrictedusers' => 0,
     ]
