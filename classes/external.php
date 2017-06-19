@@ -154,9 +154,11 @@ class external extends \external_api {
      * @return \external_function_parameters
      */
     public static function get_course_profile_parameters() {
-        return new \external_function_parameters (
-            ['courseids' => new \external_multiple_structure(
-                new \external_value(PARAM_INT, 'course id'), 'Array of course ids', VALUE_DEFAULT, []),
+        return new \external_function_parameters(
+            ['courses' => new \external_single_structure(
+                ['ids' => new \external_multiple_structure(
+                    new \external_value(PARAM_INT, 'Course id'), 'Array of course ids', VALUE_OPTIONAL),
+                ], 'courses - operator OR is used', VALUE_DEFAULT, []),
             ]
         );
     }
@@ -165,12 +167,49 @@ class external extends \external_api {
      * Returns the profile data for the requested courses.
      * if no courses are provided, all courses' profile data will be returned.
      *
-     * @param array $courseids the course ids
+     * @param array $courses the courses parameters
      * @return array the course(s) details
      */
-    public static function get_course_profile($courseids = []) {
-        $result = [];
-        return $result;
+    public static function get_course_profile($courses = []) {
+        global $DB;
+        $params = self::validate_parameters(self::get_course_profile_parameters(), ['courses' => $courses]);
+        $courseprofiles = [];
+
+        //retrieve courses
+        $cfields = 'id,fullname,summary,summaryformat,startdate,enddate';
+        //retrieve courses
+        if (!array_key_exists('ids', $params['courses']) || empty($params['courses']['ids'])) {
+            $coursesrs = $DB->get_recordset('course', null, 'id', $cfields);
+        } else {
+            $coursesrs = $DB->get_recordset_list('course', 'id', $params['courses']['ids'], 'id', $cfields);
+        }
+
+        foreach ($coursesrs as $course) {
+            $courseprofile = [];
+            $context = \context_course::instance($course->id, IGNORE_MISSING);
+            try {
+                self::validate_context($context);
+            } catch (Exception $e) {
+                $exceptionparam = new stdClass();
+                $exceptionparam->message = $e->getMessage();
+                $exceptionparam->courseid = $course->id;
+                throw new moodle_exception('errorcoursecontextnotvalid', 'webservice', '', $exceptionparam);
+            }
+            $courseprofile['courseid'] = $course->id;
+            $courseprofile['name'] = external_format_string($course->fullname, $context->id);
+            list($courseprofile['description']) =
+                external_format_text($course->summary, $course->summaryformat, $context->id, 'course', 'summary', 0);
+            $courseprofile['starttime'] = $course->startdate;
+            $courseprofile['endtime'] = $course->enddate;
+            $courseprofile['tags'] = [];
+            $courseprofile['outcomes'] = [];
+            $courseprofile['competencies'] = [];
+            $courseprofile['badges'] = [];
+            $courseprofiles[] = $courseprofile;
+        }
+        $coursesrs->close();
+
+        return $courseprofiles;
     }
 
     /**
@@ -285,16 +324,6 @@ class external extends \external_api {
                             ),
                             'tags'
                          ),
-                         'outcomes' => new \external_multiple_structure(
-                            new \external_single_structure(
-                                ['id' => new \external_value(PARAM_INT, 'Outcome id.'),
-                                 'name' => new \external_value(PARAM_TEXT, 'Name of this outcome.'),
-                                 'description' => new \external_value(PARAM_TEXT, 'Description of this outcome.'),
-                                ],
-                                'outcome'
-                            ),
-                            'outcomes'
-                         ),
                          'competencies' => new \external_multiple_structure(
                             new \external_single_structure(
                                 ['id' => new \external_value(PARAM_INT, 'Competency id.'),
@@ -304,6 +333,16 @@ class external extends \external_api {
                                 'competency'
                             ),
                             'competencies'
+                         ),
+                         'outcomes' => new \external_multiple_structure(
+                            new \external_single_structure(
+                                ['id' => new \external_value(PARAM_INT, 'Outcome id.'),
+                                 'name' => new \external_value(PARAM_TEXT, 'Name of this outcome.'),
+                                 'description' => new \external_value(PARAM_TEXT, 'Description of this outcome.'),
+                                ],
+                                'outcome'
+                            ),
+                            'outcomes'
                          ),
                         ],
                         'course object'
