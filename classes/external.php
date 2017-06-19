@@ -175,9 +175,7 @@ class external extends \external_api {
         $params = self::validate_parameters(self::get_course_profile_parameters(), ['courses' => $courses]);
         $courseprofiles = [];
 
-        //retrieve courses
         $cfields = 'id,fullname,summary,summaryformat,startdate,enddate';
-        //retrieve courses
         if (!array_key_exists('ids', $params['courses']) || empty($params['courses']['ids'])) {
             $coursesrs = $DB->get_recordset('course', null, 'id', $cfields);
         } else {
@@ -197,8 +195,8 @@ class external extends \external_api {
             }
             $courseprofile['courseid'] = $course->id;
             $courseprofile['name'] = external_format_string($course->fullname, $context->id);
-            list($courseprofile['description']) =
-                external_format_text($course->summary, $course->summaryformat, $context->id, 'course', 'summary', 0);
+            list($courseprofile['description']) = external_format_text($course->summary, $course->summaryformat, $context->id,
+                'course', 'summary', 0);
             $courseprofile['starttime'] = $course->startdate;
             $courseprofile['endtime'] = $course->enddate;
             $courseprofile['tags'] = [];
