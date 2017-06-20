@@ -45,8 +45,10 @@ class external extends \external_api {
      */
     public static function get_user_profile_parameters() {
         return new \external_function_parameters (
-            ['userids' => new \external_multiple_structure(
-                new \external_value(PARAM_INT, 'user id'), 'Array of user ids', VALUE_DEFAULT, []),
+            ['users' => new \external_single_structure(
+                ['ids' => new \external_multiple_structure(
+                    new \external_value(PARAM_INT, 'User id'), 'Array of user ids', VALUE_OPTIONAL),
+                ], 'Users - operator OR is used', VALUE_DEFAULT, []),
             ]
         );
     }
@@ -55,12 +57,71 @@ class external extends \external_api {
      * Returns the profile data for the requested users.
      * if no users are provided, all users' profile data will be returned.
      *
-     * @param array $userids the user ids
-     * @return array the user(s) details
+     * @param array $users The users parameters.
+     * @return array The user(s) details.
      */
-    public static function get_user_profile($userids = []) {
-        $result = [];
-        return $result;
+    public static function get_user_profile($users = []) {
+        global $DB;
+
+        $params = self::validate_parameters(self::get_user_profile_parameters(), ['users' => $users]);
+        $userprofiles = [];
+
+        $ufields = 'id,lang,firstaccess,lastaccess,lastlogin,description,descriptionformat';
+        if (!array_key_exists('ids', $params['users']) || empty($params['users']['ids'])) {
+            $userrs = $DB->get_recordset('user', null, 'id', $ufields);
+            $userids = [];
+        } else {
+            $userids = $params['users']['ids'];
+            $userrs = $DB->get_recordset_list('user', 'id', $userids, 'id', $ufields);
+        }
+
+        $datafields = self::get_user_datafields($userids);
+        $tags = self::get_user_tags($userids);
+        $badges = self::get_user_badges($userids);
+        $enrolments = self::get_user_enrolments($userids);
+
+        foreach ($userrs as $user) {
+            $userprofile = [];
+            $userprofile['userid'] = $user->id;
+            $userprofile['language'] = $user->lang;
+            $userprofile['firstaccess'] = $user->firstaccess;
+            $userprofile['lastaccess'] = $user->lastaccess;
+            $userprofile['lastlogin'] = $user->lastlogin;
+            $userprofile['description'] = format_text($user->description, $user->descriptionformat);
+
+            $userprofile['datafields'] = [];
+            if (isset($datafields[$user->id])) {
+                foreach ($datafields[$user->id] as $datafield) {
+                    $userprofile['datafields'][] = $datafield;
+                }
+            }
+
+            $userprofile['tags'] = [];
+            if (isset($tags[$user->id])) {
+                foreach ($tags[$user->id] as $tag) {
+                    $userprofile['tags'][] = $tag;
+                }
+            }
+
+            $userprofile['badges'] = [];
+            if (isset($badges[$user->id])) {
+                foreach ($badges[$user->id] as $badge) {
+                    $userprofile['badges'][] = $badge;
+                }
+            }
+
+            $userprofile['courseenrolments'] = [];
+            if (isset($enrolments[$user->id])) {
+                foreach ($enrolments[$user->id] as $enrolment) {
+                    $userprofile['courseenrolments'][] = $enrolment;
+                }
+            }
+
+            $userprofiles[] = $userprofile;
+        }
+        $userrs->close();
+
+        return $userprofiles;
     }
 
     /**
@@ -76,37 +137,19 @@ class external extends \external_api {
                  'firstaccess' => new \external_value(PARAM_INT, 'Original site access timestamp.'),
                  'lastaccess' => new \external_value(PARAM_INT, 'Last known site access timestamp.'),
                  'lastlogin' => new \external_value(PARAM_INT, 'Last login timestamp.'),
-                 'description' => new \external_value(PARAM_TEXT, 'User summary of themselves.'),
+                 'description' => new \external_value(PARAM_RAW, 'User summary of themselves.'),
                  'datafields' => new \external_multiple_structure(
                     new \external_single_structure(
                         ['name' => new \external_value(PARAM_TEXT, 'Name of this field.'),
-                         'description' => new \external_value(PARAM_TEXT, 'Description of this field.'),
-                         'value' => new \external_value(PARAM_TEXT, 'Value of this field for this user.'),
+                         'description' => new \external_value(PARAM_RAW, 'Description of this field.'),
+                         'value' => new \external_value(PARAM_RAW, 'Value of this field for this user.'),
                         ],
                         'datafield'
                     ),
                     'datafields'
                  ),
-                 'tags' => new \external_multiple_structure(
-                    new \external_single_structure(
-                        ['name' => new \external_value(PARAM_TEXT, 'Name of this tag.'),
-                         'description' => new \external_value(PARAM_TEXT, 'Description of this tag.'),
-                        ],
-                        'tag'
-                    ),
-                    'tags'
-                 ),
-                 'badges' => new \external_multiple_structure(
-                    new \external_single_structure(
-                        ['id' => new \external_value(PARAM_INT, 'Badge id.'),
-                         'name' => new \external_value(PARAM_TEXT, 'Name of this badge.'),
-                         'description' => new \external_value(PARAM_TEXT, 'Description of this badge.'),
-                         'issuedtime' => new \external_value(PARAM_INT, 'Issued timestamp.'),
-                        ],
-                        'badge'
-                    ),
-                    'badges'
-                 ),
+                 'tags' => self::tag_structure(),
+                 'badges' => self::badge_structure(true),
                  'courseenrolments' => new \external_multiple_structure(
                     new \external_single_structure(
                         ['courseid' => new \external_value(PARAM_INT, 'Course id.'),
@@ -114,28 +157,8 @@ class external extends \external_api {
                          'startime' => new \external_value(PARAM_INT, 'When started activity in course timestamp.'),
                          'endtime' => new \external_value(PARAM_INT, 'When ended course timestamp.'),
                          'lastaccess' => new \external_value(PARAM_INT, 'When last accessed course timestamp.'),
-                         'competencies' => new \external_multiple_structure(
-                            new \external_single_structure(
-                                ['id' => new \external_value(PARAM_INT, 'Competency id.'),
-                                 'name' => new \external_value(PARAM_TEXT, 'Name of this competency.'),
-                                 'description' => new \external_value(PARAM_TEXT, 'Description of this competency.'),
-                                 'proficiency' => new \external_value(PARAM_TEXT, 'User proficiency of this competency.'),
-                                ],
-                                'competency'
-                            ),
-                            'competencies'
-                         ),
-                         'outcomes' => new \external_multiple_structure(
-                            new \external_single_structure(
-                                ['id' => new \external_value(PARAM_INT, 'Outcome id.'),
-                                 'name' => new \external_value(PARAM_TEXT, 'Name of this outcome.'),
-                                 'description' => new \external_value(PARAM_TEXT, 'Description of this outcome.'),
-                                 'proficiency' => new \external_value(PARAM_TEXT, 'User proficiency of this outcome.'),
-                                ],
-                                'outcome'
-                            ),
-                            'outcomes'
-                         ),
+                         'competencies' => self::competency_structure(true),
+                         'outcomes' => self::outcome_structure(true),
                         ],
                         'courseenrolment'
                     ),
@@ -178,9 +201,16 @@ class external extends \external_api {
         $cfields = 'id,fullname,summary,summaryformat,startdate,enddate';
         if (!array_key_exists('ids', $params['courses']) || empty($params['courses']['ids'])) {
             $coursesrs = $DB->get_recordset('course', null, 'id', $cfields);
+            $courseids = [];
         } else {
-            $coursesrs = $DB->get_recordset_list('course', 'id', $params['courses']['ids'], 'id', $cfields);
+            $courseids = $params['courses']['ids'];
+            $coursesrs = $DB->get_recordset_list('course', 'id', $courseids, 'id', $cfields);
         }
+
+        $tags = self::get_course_tags($courseids);
+        $outcomes = self::get_course_outcomes($courseids);
+        $competencies = self::get_course_competencies($courseids);
+        $badges = self::get_course_badges($courseids);
 
         foreach ($coursesrs as $course) {
             $courseprofile = [];
@@ -199,10 +229,35 @@ class external extends \external_api {
                 'course', 'summary', 0);
             $courseprofile['starttime'] = $course->startdate;
             $courseprofile['endtime'] = $course->enddate;
+
             $courseprofile['tags'] = [];
-            $courseprofile['outcomes'] = [];
+            if (isset($tags[$course->id])) {
+                foreach ($tags[$course->id] as $tag) {
+                    $courseprofile['tags'][] = $tag;
+                }
+            }
+
             $courseprofile['competencies'] = [];
+            if (isset($competencies[$course->id])) {
+                foreach ($competencies[$course->id] as $competency) {
+                    $courseprofile['competencies'][] = $competency;
+                }
+            }
+
+            $courseprofile['outcomes'] = [];
+            if (isset($outcomes[$course->id])) {
+                foreach ($outcomes[$course->id] as $outcome) {
+                    $courseprofile['outcomes'][] = $outcome;
+                }
+            }
+
             $courseprofile['badges'] = [];
+            if (isset($badges[$course->id])) {
+                foreach ($badges[$course->id] as $badge) {
+                    $courseprofile['badges'][] = $badge;
+                }
+            }
+
             $courseprofiles[] = $courseprofile;
         }
         $coursesrs->close();
@@ -220,48 +275,13 @@ class external extends \external_api {
             new \external_single_structure(
                 ['courseid' => new \external_value(PARAM_INT, 'Course id'),
                  'name' => new \external_value(PARAM_TEXT, 'Course name.'),
-                 'description' => new \external_value(PARAM_TEXT, 'Course description.'),
+                 'description' => new \external_value(PARAM_RAW, 'Course description.'),
                  'starttime' => new \external_value(PARAM_INT, 'Start of the course timestamp.'),
                  'endtime' => new \external_value(PARAM_INT, 'End of the course timestamp.'),
-                 'tags' => new \external_multiple_structure(
-                    new \external_single_structure(
-                        ['name' => new \external_value(PARAM_TEXT, 'Name of this tag.'),
-                         'description' => new \external_value(PARAM_TEXT, 'Description of this tag.'),
-                        ],
-                        'tag'
-                    ),
-                    'tags'
-                 ),
-                 'outcomes' => new \external_multiple_structure(
-                    new \external_single_structure(
-                        ['id' => new \external_value(PARAM_INT, 'Outcome id.'),
-                         'name' => new \external_value(PARAM_TEXT, 'Name of this outcome.'),
-                         'description' => new \external_value(PARAM_TEXT, 'Description of this outcome.'),
-                        ],
-                        'outcome'
-                    ),
-                    'outcomes'
-                 ),
-                 'competencies' => new \external_multiple_structure(
-                    new \external_single_structure(
-                        ['id' => new \external_value(PARAM_INT, 'Competency id.'),
-                         'name' => new \external_value(PARAM_TEXT, 'Name of this competency.'),
-                         'description' => new \external_value(PARAM_TEXT, 'Description of this competency.'),
-                        ],
-                        'competency'
-                    ),
-                    'competencies'
-                 ),
-                 'badges' => new \external_multiple_structure(
-                    new \external_single_structure(
-                        ['id' => new \external_value(PARAM_INT, 'Badge id.'),
-                         'name' => new \external_value(PARAM_TEXT, 'Name of this badge.'),
-                         'description' => new \external_value(PARAM_TEXT, 'Description of this badge.'),
-                        ],
-                        'badge'
-                    ),
-                    'badges'
-                 ),
+                 'tags' => self::tag_structure(),
+                 'competencies' => self::competency_structure(),
+                 'outcomes' => self::outcome_structure(),
+                 'badges' => self::badge_structure(),
                 ],
                 'course'
             ),
@@ -313,35 +333,9 @@ class external extends \external_api {
                          'name' => new \external_value(PARAM_TEXT, 'Course object name.'),
                          'description' => new \external_value(PARAM_TEXT, 'Course object description.'),
                          'type' => new \external_value(PARAM_TEXT, 'Course object type.'),
-                         'tags' => new \external_multiple_structure(
-                            new \external_single_structure(
-                                ['name' => new \external_value(PARAM_TEXT, 'Name of this tag.'),
-                                 'description' => new \external_value(PARAM_TEXT, 'Description of this tag.'),
-                                ],
-                                'tag'
-                            ),
-                            'tags'
-                         ),
-                         'competencies' => new \external_multiple_structure(
-                            new \external_single_structure(
-                                ['id' => new \external_value(PARAM_INT, 'Competency id.'),
-                                 'name' => new \external_value(PARAM_TEXT, 'Name of this competency.'),
-                                 'description' => new \external_value(PARAM_TEXT, 'Description of this competency.'),
-                                ],
-                                'competency'
-                            ),
-                            'competencies'
-                         ),
-                         'outcomes' => new \external_multiple_structure(
-                            new \external_single_structure(
-                                ['id' => new \external_value(PARAM_INT, 'Outcome id.'),
-                                 'name' => new \external_value(PARAM_TEXT, 'Name of this outcome.'),
-                                 'description' => new \external_value(PARAM_TEXT, 'Description of this outcome.'),
-                                ],
-                                'outcome'
-                            ),
-                            'outcomes'
-                         ),
+                         'tags' => self::tag_structure(),
+                         'competencies' => self::competency_structure(),
+                         'outcomes' => self::outcome_structure(),
                         ],
                         'course object'
                     ),
@@ -406,5 +400,264 @@ class external extends \external_api {
             ),
             'users'
         );
+    }
+
+    /**
+     * Internal function defining a tag structure for use in "_returns" definitions.
+     *
+     * @return \external_multiple_structure
+     */
+
+    private static function tag_structure() {
+        return new \external_multiple_structure(
+            new \external_single_structure(
+                ['name' => new \external_value(PARAM_TEXT, 'Name of this tag.'),
+                 'description' => new \external_value(PARAM_RAW, 'Description of this tag.'),
+                ],
+                'tag'
+            ),
+            'tags'
+         );
+    }
+
+    /**
+     * Internal function defining an outcomes structure for use in "_returns" definitions.
+     *
+     * @param boolean $withproficiency True if including proficiency.
+     * @return \external_multiple_structure
+     */
+
+    private static function outcome_structure($withproficiency = false) {
+        $structarray = ['id' => new \external_value(PARAM_INT, 'Outcome id.'),
+            'name' => new \external_value(PARAM_TEXT, 'Name of this outcome.'),
+            'description' => new \external_value(PARAM_RAW, 'Description of this outcome.')];
+        if ($withproficiency) {
+            $structarray['proficiency'] = new \external_value(PARAM_TEXT, 'User proficiency of this outcome.');
+        }
+        return new \external_multiple_structure(new \external_single_structure($structarray, 'outcome'), 'outcomes');
+    }
+
+    /**
+     * Internal function defining a competencies structure for use in "_returns" definitions.
+     *
+     * @param boolean $withproficiency True if including proficiency.
+     * @return \external_multiple_structure
+     */
+
+    private static function competency_structure($withproficiency = false) {
+        $structarray = ['id' => new \external_value(PARAM_INT, 'Competency id.'),
+            'name' => new \external_value(PARAM_TEXT, 'Name of this competency.'),
+            'description' => new \external_value(PARAM_RAW, 'Description of this competency.')];
+        if ($withproficiency) {
+            $structarray['proficiency'] = new \external_value(PARAM_TEXT, 'User proficiency of this competency.');
+        }
+        return new \external_multiple_structure(new \external_single_structure($structarray, 'competency'), 'competencies');
+    }
+
+    /**
+     * Internal function defining a badges structure for use in "_returns" definitions.
+     *
+     * @param boolean $withissuedtime True if including issued time.
+     * @return \external_multiple_structure
+     */
+
+    private static function badge_structure($withissuedtime = false) {
+        $structarray = ['id' => new \external_value(PARAM_INT, 'Badge id.'),
+            'name' => new \external_value(PARAM_TEXT, 'Name of this badge.'),
+            'description' => new \external_value(PARAM_RAW, 'Description of this badge.')];
+        if ($withissuedtime) {
+            $structarray['issuedtime'] = new \external_value(PARAM_INT, 'Issued timestamp.');
+        }
+        return new \external_multiple_structure(new \external_single_structure($structarray, 'badge'), 'badges');
+    }
+
+    /**
+     * Internal function to return the user datafields structure for the user id list.
+     *
+     * @param array $userids The array of user id's to get datafields for.
+     * @return array The datafields structure.
+     */
+    private static function get_user_datafields($userids = []) {
+        global $DB;
+
+        $sql = '';
+        $params = [];
+        if (!empty($userids)) {
+            list($sql, $params) = $DB->get_in_or_equal($userids);
+            $sql = 'uid.userid ' . $sql . ' ';
+        }
+
+        $select = 'SELECT uid.id,uid.userid,uid.fieldid,uid.data,uid.dataformat,uif.name,uif.description,uif.descriptionformat ';
+        $from = 'FROM {user_info_data} uid ';
+        $join = 'INNER JOIN {user_info_field} uif ON uid.fieldid = uif.id ';
+        $where = !empty($sql) ? 'WHERE ' . $sql : '';
+        $order = 'ORDER BY uid.userid ASC ';
+        $sql = $select . $from . $join . $where . $order;
+
+        $dfsrs = $DB->get_recordset_sql($sql, $params);
+
+        $curritemid = -1;
+        $datafields = [];
+        foreach ($dfsrs as $datafieldrec) {
+            if ($datafieldrec->userid != $curritemid) {
+                $curritemid = $datafieldrec->userid;
+            }
+            $datafields[$curritemid][] = ['name' => format_string($datafieldrec->name, true),
+                'description' => format_text($datafieldrec->description, $datfieldrec->descriptionformat),
+                'value' => format_text($datafieldrec->data, $datafieldrec->dataformat)];
+        }
+        $dfsrs->close();
+
+        return $datafields;
+    }
+
+    /**
+     * Internal function to return the course tags structure for the course id list.
+     *
+     * @param array $courseids The array of course id's to get tags for.
+     * @return array The tags structure.
+     */
+    private static function get_course_tags($courseids = []) {
+        return self::get_tags('course', $courseids);
+    }
+
+    /**
+     * Internal function to return the user tags structure for the user id list.
+     *
+     * @param array $userids The array of user id's to get tags for.
+     * @return array The tags structure.
+     */
+    private static function get_user_tags($userids = []) {
+        return self::get_tags('user', $userids);
+    }
+
+    /**
+     * Internal function to return the tags structure for the specified type and itemid list.
+     *
+     * @param string $type The tag 'itemtype' value.
+     * @param array $userids The array of user id's to get tags for.
+     * @return array The tags structure.
+     */
+    private static function get_tags($type, $itemids = []) {
+        global $DB;
+
+        $sql = '';
+        $params = [];
+        if (!empty($itemids)) {
+            list($sql, $params) = $DB->get_in_or_equal($itemids);
+            $sql = 'AND ti.itemid ' . $sql . ' ';
+        }
+        $params = array_merge([$type], $params);
+
+        $select = 'SELECT ti.id, ti.tagid, ti.itemid, t.rawname, t.description, t.descriptionformat ';
+        $from = 'FROM {tag_instance} ti ';
+        $join = 'INNER JOIN {tag} t ON ti.tagid = t.id ';
+        $where = 'WHERE ti.itemtype = ? ' . $sql;
+        $order = 'ORDER BY ti.itemid ASC ';
+        $sql = $select . $from . $join . $where . $order;
+
+        $tagsrs = $DB->get_recordset_sql($sql, $params);
+
+        $curritemid = -1;
+        $tags = [];
+        foreach ($tagsrs as $tagrec) {
+            if ($tagrec->itemid != $curritemid) {
+                $curritemid = $tagrec->itemid;
+            }
+            $tags[$curritemid][] = ['name' => format_string($tagrec->rawname, true),
+                'description' => format_text($tagrec->description, $tagrec->descriptionformat)];
+        }
+        $tagsrs->close();
+
+        return $tags;
+    }
+
+    /**
+     * Internal function to return the user badges structure for the user id list.
+     *
+     * @param array $userids The array of user id's to get badges for.
+     * @return array The badges structure.
+     */
+    private static function get_user_badges($userids = []) {
+        global $DB;
+
+        $sql = '';
+        $params = [];
+        if (!empty($userids)) {
+            list($sql, $params) = $DB->get_in_or_equal($userids);
+            $sql = 'bi.userid ' . $sql . ' ';
+        }
+
+        $select = 'SELECT bi.id, bi.userid, bi.badgeid, bi.dateissued, b.name, b.description ';
+        $from = 'FROM {badge_issued} bi ';
+        $join = 'INNER JOIN {badge} b ON bi.badgeid = b.id ';
+        $where = !empty($sql) ? 'WHERE ' . $sql : '';
+        $order = 'ORDER BY bi.userid ASC ';
+        $sql = $select . $from . $join . $where . $order;
+
+        $badgesrs = $DB->get_recordset_sql($sql, $params);
+
+        $curritemid = -1;
+        $badges = [];
+        foreach ($badgesrs as $badgerec) {
+            if ($badgerec->userid != $curritemid) {
+                $curritemid = $badgerec->userid;
+            }
+            $badges[$curritemid][] = ['id' => $badgerec->badgeid,
+                'name' => format_string($badgerec->name, true),
+                'description' => format_text($badgerec->description, 0),
+                'issuedtime' => $badgerec->dateissued];
+        }
+        $badgesrs->close();
+
+        return $badges;
+    }
+
+    /**
+     * Internal function to return the user course enrolments structure for the user id list.
+     *
+     * @param array $userids The array of user id's to get enrolments for.
+     * @return array The enrolments structure.
+     */
+    private static function get_user_enrolments($userids = []) {
+        return [];
+        $outcomes = self::get_user_outcomes($userids, $enrolments);
+        $competencies = self::get_user_competencies($userids, $enrolments);
+    }
+
+    /**
+     * Internal function to return the course outcomes structure for the course id list.
+     *
+     * @param array $courseids The array of course id's to get outcomes for.
+     * @return array The outcomes structure.
+     */
+    private static function get_course_outcomes($courseids = []) {
+        global $DB;
+
+        return [];
+    }
+
+    /**
+     * Internal function to return the course competencies structure for the course id list.
+     *
+     * @param array $courseids The array of course id's to get competencies for.
+     * @return array The competencies structure.
+     */
+    private static function get_course_competencies($courseids = []) {
+        global $DB;
+
+        return [];
+    }
+
+    /**
+     * Internal function to return the course badges structure for the course id list.
+     *
+     * @param array $courseids The array of course id's to get badges for.
+     * @return array The badges structure.
+     */
+    private static function get_course_badges($courseids = []) {
+        global $DB;
+
+        return [];
     }
 }
