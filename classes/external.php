@@ -129,7 +129,7 @@ class external extends \external_api {
                     new \external_single_structure(
                         ['courseid' => new \external_value(PARAM_INT, 'Course id.'),
                          'enroltime' => new \external_value(PARAM_INT, 'When enrolled in course timestamp.'),
-                         'startime' => new \external_value(PARAM_INT, 'When started activity in course timestamp.'),
+                         'starttime' => new \external_value(PARAM_INT, 'When started activity in course timestamp.'),
                          'endtime' => new \external_value(PARAM_INT, 'When ended course timestamp.'),
                          'lastaccess' => new \external_value(PARAM_INT, 'When last accessed course timestamp.'),
                          'competencies' => self::competency_structure(true),
@@ -325,7 +325,7 @@ class external extends \external_api {
     }
 
     /**
-     * Describes the get_course_profile return value.
+     * Describes the get_user_activity return value.
      *
      * @return \external_single_structure
      */
@@ -571,7 +571,48 @@ class external extends \external_api {
      * @return array The enrolments structure.
      */
     private static function get_user_enrolments($userids = []) {
-        return [];
+        global $DB;
+
+        $sql = '';
+        $params = [];
+        if (!empty($userids)) {
+            list($sql, $params) = $DB->get_in_or_equal($userids);
+            $sql = ' AND ue.userid ' . $sql;
+        }
+
+        $ccselect = ', ' . \context_helper::get_preload_record_columns_sql('ctx') . ' ';
+        $select = 'SELECT en.id, c.id as courseid, en.userid, en.timecreated, en.timestart, en.timeend' . $ccselect;
+        $from = 'FROM {course} c ';
+        $join = 'JOIN (SELECT DISTINCT e.courseid, ue.id, ue.userid, ue.timecreated, ue.timestart, ue.timeend ' .
+                    'FROM {enrol} e ' .
+                    'JOIN {user_enrolments} ue ON (ue.enrolid = e.id' . $sql .') '.
+                    ') en ON (en.courseid = c.id) ';
+        $join .= 'LEFT JOIN {context} ctx ON (ctx.instanceid = c.id AND ctx.contextlevel = ?) ';
+        $where = 'WHERE c.id != ? ';
+        $order = 'ORDER BY en.userid ASC ';
+        $params = array_merge($params, [CONTEXT_COURSE, SITEID]);
+        $sql = $select . $from . $join . $where . $order;
+
+        $enrolsrs = $DB->get_recordset_sql($sql, $params);
+
+        $curritemid = -1;
+        $enrols = [];
+        foreach ($enrolsrs as $enrolrec) {
+            if ($enrolrec->userid != $curritemid) {
+                $curritemid = $enrolrec->userid;
+            }
+            $enrols[$curritemid][] = ['courseid' => $enrolrec->courseid,
+                'enroltime' => $enrolrec->timecreated,
+                'starttime' => $enrolrec->timestart,
+                'endtime' => $enrolrec->timeend,
+                'lastaccess' => 0,
+                'competencies' => [],
+                'outcomes' => [],
+                ];
+        }
+        $enrolsrs->close();
+
+        return $enrols;
         $outcomes = self::get_user_outcomes($userids, $enrolments);
         $competencies = self::get_user_competencies($userids, $enrolments);
     }
@@ -585,7 +626,35 @@ class external extends \external_api {
     private static function get_course_outcomes($courseids = []) {
         global $DB;
 
-        return [];
+        $sql = '';
+        $params = [];
+        if (!empty($courseids)) {
+            list($sql, $params) = $DB->get_in_or_equal($courseids);
+            $sql = 'oc.courseid ' . $sql . ' ';
+        }
+
+        $select = 'SELECT oc.id, oc.courseid, o.fullname, o.description, o.descriptionformat ';
+        $from = 'FROM {grade_outcomes_courses} oc ';
+        $join = 'INNER JOIN {grade_outcomes} o ON oc.outcomeid = o.id ';
+        $where = !empty($sql) ? 'WHERE ' . $sql : '';
+        $order = 'ORDER BY oc.courseid ASC ';
+        $sql = $select . $from . $join . $where . $order;
+
+        $outcomesrs = $DB->get_recordset_sql($sql, $params);
+
+        $curritemid = -1;
+        $outcomes = [];
+        foreach ($outcomesrs as $outcomerec) {
+            if ($outcomerec->courseid != $curritemid) {
+                $curritemid = $outcomerec->courseid;
+            }
+            $outcomes[$curritemid][] = ['id' => $outcomerec->id,
+                'name' => format_string($outcomerec->fullname, true),
+                'description' => format_text($outcomerec->description, $outcomerec->descriptionformat)];
+        }
+        $outcomesrs->close();
+
+        return $outcomes;
     }
 
     /**
