@@ -89,32 +89,28 @@ class external extends \external_api {
             $userprofile['lastlogin'] = $user->lastlogin;
             $userprofile['description'] = format_text($user->description, $user->descriptionformat);
 
-            $userprofile['datafields'] = [];
             if (isset($datafields[$user->id])) {
-                foreach ($datafields[$user->id] as $datafield) {
-                    $userprofile['datafields'][] = $datafield;
-                }
+                $userprofile['datafields'] = $datafields[$user->id];
+            } else {
+                $userprofile['datafields'] = [];
             }
 
-            $userprofile['tags'] = [];
             if (isset($tags[$user->id])) {
-                foreach ($tags[$user->id] as $tag) {
-                    $userprofile['tags'][] = $tag;
-                }
+                $userprofile['tags'] = $tags[$user->id];
+            } else {
+                $userprofile['tags'] = [];
             }
 
-            $userprofile['badges'] = [];
             if (isset($badges[$user->id])) {
-                foreach ($badges[$user->id] as $badge) {
-                    $userprofile['badges'][] = $badge;
-                }
+                $userprofile['badges']= $badges[$user->id];
+            } else {
+                $userprofile['badges'] = [];
             }
 
-            $userprofile['courseenrolments'] = [];
             if (isset($enrolments[$user->id])) {
-                foreach ($enrolments[$user->id] as $enrolment) {
-                    $userprofile['courseenrolments'][] = $enrolment;
-                }
+                $userprofile['courseenrolments'] = $enrolments[$user->id];
+            } else {
+                $userprofile['courseenrolments'] = [];
             }
 
             $userprofiles[] = $userprofile;
@@ -230,32 +226,28 @@ class external extends \external_api {
             $courseprofile['starttime'] = $course->startdate;
             $courseprofile['endtime'] = $course->enddate;
 
-            $courseprofile['tags'] = [];
             if (isset($tags[$course->id])) {
-                foreach ($tags[$course->id] as $tag) {
-                    $courseprofile['tags'][] = $tag;
-                }
+                $courseprofile['tags'] = $tags[$course->id];
+            } else {
+                $courseprofile['tags'] = [];
             }
 
-            $courseprofile['competencies'] = [];
             if (isset($competencies[$course->id])) {
-                foreach ($competencies[$course->id] as $competency) {
-                    $courseprofile['competencies'][] = $competency;
-                }
+                $courseprofile['competencies'] = $competencies[$course->id];
+            } else {
+                $courseprofile['competencies'] = [];
             }
 
-            $courseprofile['outcomes'] = [];
             if (isset($outcomes[$course->id])) {
-                foreach ($outcomes[$course->id] as $outcome) {
-                    $courseprofile['outcomes'][] = $outcome;
-                }
+                $courseprofile['outcomes'] = $outcomes[$course->id];
+            } else {
+                $courseprofile['outcomes'] = [];
             }
 
-            $courseprofile['badges'] = [];
             if (isset($badges[$course->id])) {
-                foreach ($badges[$course->id] as $badge) {
-                    $courseprofile['badges'][] = $badge;
-                }
+                $courseprofile['badges'] = $badges[$course->id];
+            } else {
+                $courseprofile['badges'] = [];
             }
 
             $courseprofiles[] = $courseprofile;
