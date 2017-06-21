@@ -666,7 +666,35 @@ class external extends \external_api {
     private static function get_course_competencies($courseids = []) {
         global $DB;
 
-        return [];
+        $sql = '';
+        $params = [];
+        if (!empty($courseids)) {
+            list($sql, $params) = $DB->get_in_or_equal($courseids);
+            $sql = 'cc.courseid ' . $sql . ' ';
+        }
+
+        $select = 'SELECT cc.id, cc.courseid, c.shortname, c.description, c.descriptionformat ';
+        $from = 'FROM {competency_coursecomp} cc ';
+        $join = 'INNER JOIN {competency} c ON cc.competencyid = c.id ';
+        $where = !empty($sql) ? 'WHERE ' . $sql : '';
+        $order = 'ORDER BY cc.courseid ASC ';
+        $sql = $select . $from . $join . $where . $order;
+
+        $competenciesrs = $DB->get_recordset_sql($sql, $params);
+
+        $curritemid = -1;
+        $competencies = [];
+        foreach ($competenciesrs as $competencyrec) {
+            if ($competencyrec->courseid != $curritemid) {
+                $curritemid = $competencyrec->courseid;
+            }
+            $competencies[$curritemid][] = ['id' => $competencyrec->id,
+                'name' => format_string($competencyrec->shortname, true),
+                'description' => format_text($competencyrec->description, $competencyrec->descriptionformat)];
+        }
+        $competenciesrs->close();
+
+        return $competencies;
     }
 
     /**
@@ -678,6 +706,37 @@ class external extends \external_api {
     private static function get_course_badges($courseids = []) {
         global $DB;
 
-        return [];
+        $cnd2 = '';
+        $params = [];
+        if (!empty($courseids)) {
+            list($sql, $params) = $DB->get_in_or_equal($courseids);
+            $cnd2 = 'AND bcp.value ' . $sql . ' ';
+        }
+        $cnd1 = $DB->sql_like('bcp.name', '?') . ' ';
+        $params = array_merge(['course_%'], $params);
+
+        $select = 'SELECT bcp.id, bcp.value, bc.badgeid, b.name, b.description ';
+        $from = 'FROM {badge_criteria_param} bcp ';
+        $join = 'INNER JOIN {badge_criteria} bc ON bcp.critid = bc.id ' .
+                'INNER JOIN {badge} b ON bc.badgeid = b.id ';
+        $where = 'WHERE ' . $cnd1 . $cnd2;
+        $order = 'ORDER BY bcp.value ASC ';
+        $sql = $select . $from . $join . $where . $order;
+
+        $badgesrs = $DB->get_recordset_sql($sql, $params);
+
+        $curritemid = -1;
+        $badges = [];
+        foreach ($badgesrs as $badgerec) {
+            if ($badgerec->value != $curritemid) {
+                $curritemid = $badgerec->value;
+            }
+            $badges[$curritemid][] = ['id' => $badgerec->badgeid,
+                'name' => format_string($badgerec->name, true),
+                'description' => format_text($badgerec->description, 0)];
+        }
+        $badgesrs->close();
+
+        return $badges;
     }
 }
