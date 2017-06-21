@@ -88,31 +88,10 @@ class external extends \external_api {
             $userprofile['lastaccess'] = $user->lastaccess;
             $userprofile['lastlogin'] = $user->lastlogin;
             $userprofile['description'] = format_text($user->description, $user->descriptionformat);
-
-            if (isset($datafields[$user->id])) {
-                $userprofile['datafields'] = $datafields[$user->id];
-            } else {
-                $userprofile['datafields'] = [];
-            }
-
-            if (isset($tags[$user->id])) {
-                $userprofile['tags'] = $tags[$user->id];
-            } else {
-                $userprofile['tags'] = [];
-            }
-
-            if (isset($badges[$user->id])) {
-                $userprofile['badges']= $badges[$user->id];
-            } else {
-                $userprofile['badges'] = [];
-            }
-
-            if (isset($enrolments[$user->id])) {
-                $userprofile['courseenrolments'] = $enrolments[$user->id];
-            } else {
-                $userprofile['courseenrolments'] = [];
-            }
-
+            $userprofile['datafields'] = isset($datafields[$user->id]) ? $datafields[$user->id] : [];
+            $userprofile['tags'] = isset($tags[$user->id]) ? $tags[$user->id] : [];
+            $userprofile['badges'] = isset($badges[$user->id]) ? $badges[$user->id] : [];
+            $userprofile['courseenrolments'] = isset($enrolments[$user->id]) ? $enrolments[$user->id] : [];
             $userprofiles[] = $userprofile;
         }
         $userrs->close();
@@ -226,30 +205,10 @@ class external extends \external_api {
             $courseprofile['starttime'] = $course->startdate;
             $courseprofile['endtime'] = $course->enddate;
 
-            if (isset($tags[$course->id])) {
-                $courseprofile['tags'] = $tags[$course->id];
-            } else {
-                $courseprofile['tags'] = [];
-            }
-
-            if (isset($competencies[$course->id])) {
-                $courseprofile['competencies'] = $competencies[$course->id];
-            } else {
-                $courseprofile['competencies'] = [];
-            }
-
-            if (isset($outcomes[$course->id])) {
-                $courseprofile['outcomes'] = $outcomes[$course->id];
-            } else {
-                $courseprofile['outcomes'] = [];
-            }
-
-            if (isset($badges[$course->id])) {
-                $courseprofile['badges'] = $badges[$course->id];
-            } else {
-                $courseprofile['badges'] = [];
-            }
-
+            $courseprofile['tags'] = isset($tags[$course->id]) ? $tags[$course->id] : [];
+            $courseprofile['competencies'] = isset($competencies[$course->id]) ? $competencies[$course->id] : [];
+            $courseprofile['outcomes'] = isset($outcomes[$course->id]) ? $outcomes[$course->id] : [];
+            $courseprofile['badges'] = isset($badges[$course->id]) ? $badges[$course->id] : [];
             $courseprofiles[] = $courseprofile;
         }
         $coursesrs->close();
