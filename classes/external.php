@@ -78,7 +78,7 @@ class external extends \external_api {
         $datafields = datatypes\datafield::get_data($userids, 'user');
         $tags = datatypes\tag::get_data($userids, 'user');
         $badges = datatypes\badge_instance::get_data($userids, 'user');
-        $enrolments = self::get_user_enrolments($userids);
+        $enrolments = datatypes\enrolment::get_data($userids, 'user');
 
         foreach ($userrs as $user) {
             $userprofile = [];
@@ -116,20 +116,7 @@ class external extends \external_api {
                  'datafields' => new \external_multiple_structure(datatypes\datafield::structure(), 'datafields'),
                  'tags' => new \external_multiple_structure(datatypes\tag::structure(), 'tags'),
                  'badges' => new \external_multiple_structure(datatypes\badge_instance::structure(), 'badges'),
-                 'courseenrolments' => new \external_multiple_structure(
-                    new \external_single_structure(
-                        ['courseid' => new \external_value(PARAM_INT, 'Course id.'),
-                         'enroltime' => new \external_value(PARAM_INT, 'When enrolled in course timestamp.'),
-                         'starttime' => new \external_value(PARAM_INT, 'When started activity in course timestamp.'),
-                         'endtime' => new \external_value(PARAM_INT, 'When ended course timestamp.'),
-                         'lastaccess' => new \external_value(PARAM_INT, 'When last accessed course timestamp.'),
-                         'competencies' => self::competency_structure(true),
-                         'outcomes' => self::outcome_structure(true),
-                        ],
-                        'courseenrolment'
-                    ),
-                    'courseenrolments'
-                 ),
+                 'courseenrolments' => new \external_multiple_structure(datatypes\enrolment::structure(), 'courseenrolments'),
                 ],
                 'user'
             ),
@@ -173,10 +160,10 @@ class external extends \external_api {
             $coursesrs = $DB->get_recordset_list('course', 'id', $courseids, 'id', $cfields);
         }
 
-        $tags = datatypes\tag::get_data($userids, 'course');
-        $outcomes = self::get_course_outcomes($courseids);
-        $competencies = self::get_course_competencies($courseids);
-        $badges = datatypes\badge::get_data($userids, 'course');
+        $tags = datatypes\tag::get_data($courseids, 'course');
+        $outcomes = datatypes\outcome::get_data($courseids, 'course');
+        $competencies = datatypes\competency::get_data($courseids, 'course');
+        $badges = datatypes\badge::get_data($courseids, 'course');
 
         foreach ($coursesrs as $course) {
             $courseprofile = [];
@@ -221,8 +208,8 @@ class external extends \external_api {
                  'starttime' => new \external_value(PARAM_INT, 'Start of the course timestamp.'),
                  'endtime' => new \external_value(PARAM_INT, 'End of the course timestamp.'),
                  'tags' => new \external_multiple_structure(datatypes\tag::structure(), 'tags'),
-                 'competencies' => self::competency_structure(),
-                 'outcomes' => self::outcome_structure(),
+                 'competencies' => new \external_multiple_structure(datatypes\competency::structure(), 'competencies'),
+                 'outcomes' => new \external_multiple_structure(datatypes\outcome::structure(), 'outcomes'),
                  'badges' => new \external_multiple_structure(datatypes\badge::structure(), 'badges'),
                 ],
                 'course'
@@ -276,8 +263,8 @@ class external extends \external_api {
                          'description' => new \external_value(PARAM_TEXT, 'Course object description.'),
                          'type' => new \external_value(PARAM_TEXT, 'Course object type.'),
                          'tags' => new \external_multiple_structure(datatypes\tag::structure(), 'tags'),
-                         'competencies' => self::competency_structure(),
-                         'outcomes' => self::outcome_structure(),
+                         'competencies' => new \external_multiple_structure(datatypes\competency::structure(), 'competencies'),
+                         'outcomes' => new \external_multiple_structure(datatypes\outcome::structure(), 'outcomes'),
                         ],
                         'course object'
                     ),
@@ -342,172 +329,5 @@ class external extends \external_api {
             ),
             'users'
         );
-    }
-
-    /**
-     * Internal function defining an outcomes structure for use in "_returns" definitions.
-     *
-     * @param boolean $withproficiency True if including proficiency.
-     * @return \external_multiple_structure
-     */
-
-    private static function outcome_structure($withproficiency = false) {
-        $structarray = ['id' => new \external_value(PARAM_INT, 'Outcome id.'),
-            'name' => new \external_value(PARAM_TEXT, 'Name of this outcome.'),
-            'description' => new \external_value(PARAM_RAW, 'Description of this outcome.')];
-        if ($withproficiency) {
-            $structarray['proficiency'] = new \external_value(PARAM_TEXT, 'User proficiency of this outcome.');
-        }
-        return new \external_multiple_structure(new \external_single_structure($structarray, 'outcome'), 'outcomes');
-    }
-
-    /**
-     * Internal function defining a competencies structure for use in "_returns" definitions.
-     *
-     * @param boolean $withproficiency True if including proficiency.
-     * @return \external_multiple_structure
-     */
-
-    private static function competency_structure($withproficiency = false) {
-        $structarray = ['id' => new \external_value(PARAM_INT, 'Competency id.'),
-            'name' => new \external_value(PARAM_TEXT, 'Name of this competency.'),
-            'description' => new \external_value(PARAM_RAW, 'Description of this competency.')];
-        if ($withproficiency) {
-            $structarray['proficiency'] = new \external_value(PARAM_TEXT, 'User proficiency of this competency.');
-        }
-        return new \external_multiple_structure(new \external_single_structure($structarray, 'competency'), 'competencies');
-    }
-
-    /**
-     * Internal function to return the user course enrolments structure for the user id list.
-     *
-     * @param array $userids The array of user id's to get enrolments for.
-     * @return array The enrolments structure.
-     */
-    private static function get_user_enrolments($userids = []) {
-        global $DB;
-
-        $sql = '';
-        $params = [];
-        if (!empty($userids)) {
-            list($sql, $params) = $DB->get_in_or_equal($userids);
-            $sql = ' AND ue.userid ' . $sql;
-        }
-
-        $ccselect = ', ' . \context_helper::get_preload_record_columns_sql('ctx') . ' ';
-        $select = 'SELECT en.id, c.id as courseid, en.userid, en.timecreated, en.timestart, en.timeend' . $ccselect;
-        $from = 'FROM {course} c ';
-        $join = 'JOIN (SELECT DISTINCT e.courseid, ue.id, ue.userid, ue.timecreated, ue.timestart, ue.timeend ' .
-                    'FROM {enrol} e ' .
-                    'JOIN {user_enrolments} ue ON (ue.enrolid = e.id' . $sql .') '.
-                    ') en ON (en.courseid = c.id) ';
-        $join .= 'LEFT JOIN {context} ctx ON (ctx.instanceid = c.id AND ctx.contextlevel = ?) ';
-        $where = 'WHERE c.id != ? ';
-        $order = 'ORDER BY en.userid ASC ';
-        $params = array_merge($params, [CONTEXT_COURSE, SITEID]);
-        $sql = $select . $from . $join . $where . $order;
-
-        $enrolsrs = $DB->get_recordset_sql($sql, $params);
-
-        $curritemid = -1;
-        $enrols = [];
-        foreach ($enrolsrs as $enrolrec) {
-            if ($enrolrec->userid != $curritemid) {
-                $curritemid = $enrolrec->userid;
-            }
-            $enrols[$curritemid][] = ['courseid' => $enrolrec->courseid,
-                'enroltime' => $enrolrec->timecreated,
-                'starttime' => $enrolrec->timestart,
-                'endtime' => $enrolrec->timeend,
-                'lastaccess' => 0,
-                'competencies' => [],
-                'outcomes' => [],
-                ];
-        }
-        $enrolsrs->close();
-
-        return $enrols;
-        $outcomes = self::get_user_outcomes($userids, $enrolments);
-        $competencies = self::get_user_competencies($userids, $enrolments);
-    }
-
-    /**
-     * Internal function to return the course outcomes structure for the course id list.
-     *
-     * @param array $courseids The array of course id's to get outcomes for.
-     * @return array The outcomes structure.
-     */
-    private static function get_course_outcomes($courseids = []) {
-        global $DB;
-
-        $sql = '';
-        $params = [];
-        if (!empty($courseids)) {
-            list($sql, $params) = $DB->get_in_or_equal($courseids);
-            $sql = 'oc.courseid ' . $sql . ' ';
-        }
-
-        $select = 'SELECT oc.id, oc.courseid, o.fullname, o.description, o.descriptionformat ';
-        $from = 'FROM {grade_outcomes_courses} oc ';
-        $join = 'INNER JOIN {grade_outcomes} o ON oc.outcomeid = o.id ';
-        $where = !empty($sql) ? 'WHERE ' . $sql : '';
-        $order = 'ORDER BY oc.courseid ASC ';
-        $sql = $select . $from . $join . $where . $order;
-
-        $outcomesrs = $DB->get_recordset_sql($sql, $params);
-
-        $curritemid = -1;
-        $outcomes = [];
-        foreach ($outcomesrs as $outcomerec) {
-            if ($outcomerec->courseid != $curritemid) {
-                $curritemid = $outcomerec->courseid;
-            }
-            $outcomes[$curritemid][] = ['id' => $outcomerec->id,
-                'name' => format_string($outcomerec->fullname, true),
-                'description' => format_text($outcomerec->description, $outcomerec->descriptionformat)];
-        }
-        $outcomesrs->close();
-
-        return $outcomes;
-    }
-
-    /**
-     * Internal function to return the course competencies structure for the course id list.
-     *
-     * @param array $courseids The array of course id's to get competencies for.
-     * @return array The competencies structure.
-     */
-    private static function get_course_competencies($courseids = []) {
-        global $DB;
-
-        $sql = '';
-        $params = [];
-        if (!empty($courseids)) {
-            list($sql, $params) = $DB->get_in_or_equal($courseids);
-            $sql = 'cc.courseid ' . $sql . ' ';
-        }
-
-        $select = 'SELECT cc.id, cc.courseid, c.shortname, c.description, c.descriptionformat ';
-        $from = 'FROM {competency_coursecomp} cc ';
-        $join = 'INNER JOIN {competency} c ON cc.competencyid = c.id ';
-        $where = !empty($sql) ? 'WHERE ' . $sql : '';
-        $order = 'ORDER BY cc.courseid ASC ';
-        $sql = $select . $from . $join . $where . $order;
-
-        $competenciesrs = $DB->get_recordset_sql($sql, $params);
-
-        $curritemid = -1;
-        $competencies = [];
-        foreach ($competenciesrs as $competencyrec) {
-            if ($competencyrec->courseid != $curritemid) {
-                $curritemid = $competencyrec->courseid;
-            }
-            $competencies[$curritemid][] = ['id' => $competencyrec->id,
-                'name' => format_string($competencyrec->shortname, true),
-                'description' => format_text($competencyrec->description, $competencyrec->descriptionformat)];
-        }
-        $competenciesrs->close();
-
-        return $competencies;
     }
 }

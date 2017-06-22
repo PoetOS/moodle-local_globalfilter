@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Webservice helper class containing functions for the datafield data type.
+ * Webservice helper class containing functions for the enrolment data type.
  *
  * @package     local_globalfilter
  * @author      Mike Churchward
@@ -28,7 +28,7 @@ namespace local_globalfilter\datatypes;
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * Datafield functions
+ * Enrolment functions
  *
  * @package     local_globalfilter
  * @author      Mike Churchward
@@ -36,30 +36,34 @@ defined('MOODLE_INTERNAL') || die();
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-class datafield extends datatype_base {
+class enrolment extends datatype_base {
 
     /**
-     * Internal function defining a datafield structure for use in "_returns" definitions.
+     * Internal function defining a enrolment structure for use in "_returns" definitions.
      *
      * @return \external_multiple_structure
      */
 
     public static function structure() {
         return new \external_single_structure(
-            ['name' => new \external_value(PARAM_TEXT, 'Name of this field.'),
-             'description' => new \external_value(PARAM_RAW, 'Description of this field.'),
-             'value' => new \external_value(PARAM_RAW, 'Value of this field for this user.'),
+            ['courseid' => new \external_value(PARAM_INT, 'Course id.'),
+             'enroltime' => new \external_value(PARAM_INT, 'When enrolled in course timestamp.'),
+             'starttime' => new \external_value(PARAM_INT, 'When started activity in course timestamp.'),
+             'endtime' => new \external_value(PARAM_INT, 'When ended course timestamp.'),
+             'lastaccess' => new \external_value(PARAM_INT, 'When last accessed course timestamp.'),
+             'competencies' => new \external_multiple_structure(competency_instance::structure(), 'competencies'),
+             'outcomes' => new \external_multiple_structure(outcome_instance::structure(), 'outcomes'),
             ],
-            'datafield'
+            'courseenrolment'
         );
     }
 
     /**
-     * Internal function to return the user datafields structure for the user id list.
+     * Internal function to return the user enrolments structure for the user id list.
      *
-     * @param array $dataids The array of user id's to get datafields for.
+     * @param array $dataids The array of user id's to get enrolments for.
      * @param string $type Optional type to delegate other functions for.
-     * @return array The datafields structure.
+     * @return array The enrolments structure.
      */
     public static function get_data($dataids = [], $type = null) {
         global $DB;
@@ -76,21 +80,36 @@ class datafield extends datatype_base {
         $params = [];
         if (!empty($dataids)) {
             list($cnd, $params) = $DB->get_in_or_equal($dataids);
-            $cnd = 'uid.userid ' . $cnd . ' ';
+            $cnd = ' AND ue.userid ' . $cnd;
         }
 
-        $select = 'SELECT uid.id,uid.userid,uid.fieldid,uid.data,uid.dataformat,uif.name,uif.description,uif.descriptionformat ';
-        $from = 'FROM {user_info_data} uid ';
-        $join = 'INNER JOIN {user_info_field} uif ON uid.fieldid = uif.id ';
-        $where = !empty($cnd) ? 'WHERE ' . $cnd : '';
-        $order = 'ORDER BY uid.userid ASC ';
+        $ccselect = ', ' . \context_helper::get_preload_record_columns_sql('ctx') . ' ';
+        $select = 'SELECT en.id, c.id as courseid, en.userid, en.timecreated, en.timestart, en.timeend' . $ccselect;
+        $from = 'FROM {course} c ';
+        $join = 'JOIN (SELECT DISTINCT e.courseid, ue.id, ue.userid, ue.timecreated, ue.timestart, ue.timeend ' .
+                    'FROM {enrol} e ' .
+                    'JOIN {user_enrolments} ue ON (ue.enrolid = e.id' . $cnd .') '.
+                    ') en ON (en.courseid = c.id) ';
+        $join .= 'LEFT JOIN {context} ctx ON (ctx.instanceid = c.id AND ctx.contextlevel = ?) ';
+        $where = 'WHERE c.id != ? ';
+        $order = 'ORDER BY en.userid ASC ';
+        $params = array_merge($params, [CONTEXT_COURSE, SITEID]);
         $sql = $select . $from . $join . $where . $order;
 
-        $dfsrs = $DB->get_recordset_sql($sql, $params);
-        $fields = ['name' => 'string:name', 'description' => 'text:description', 'value' => 'text:data'];
-        $datafields = self::create_data_structure($dfsrs, 'userid', $fields);
-        $dfsrs->close();
+        $enrolsrs = $DB->get_recordset_sql($sql, $params);
+        $fields = ['courseid' => 'int', 'enroltime' => 'int:timecreated',
+            'starttime' => 'int:timestart', 'endtime' => 'int:timeend'];
+        $enrols = self::create_data_structure($enrolsrs, 'userid', $fields);
+        $enrolsrs->close();
 
-        return $datafields;
+        foreach ($enrols as $useridx => $enrolrecs) {
+            foreach ($enrolrecs as $courseidx => $courserecs) {
+                $enrols[$useridx][$courseidx]['lastaccess'] = 0;
+                $enrols[$useridx][$courseidx]['competencies'] = [];
+                $enrols[$useridx][$courseidx]['outcomes'] = [];
+            }
+        }
+
+        return $enrols;
     }
 }

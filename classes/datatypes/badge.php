@@ -61,7 +61,7 @@ class badge extends datatype_base {
     }
 
     /**
-     * Internal function to return the user datafields structure for the user id list.
+     * Internal function to return the badges structure for the data id list.
      *
      * @param array $dataids The array of user id's to get datafields for.
      * @param string $type Optional type to delegate other functions for.
@@ -77,7 +77,7 @@ class badge extends datatype_base {
         } else if ($type == 'course') {
             return self::get_course_data($dataids);
         } else {
-            throw new coding_exception('Unknown tag type: '.$type);
+            throw new coding_exception('Unknown badge type: '.$type);
             return false;
         }
     }
@@ -85,7 +85,7 @@ class badge extends datatype_base {
     /**
      * Internal function to return the user badges structure for the user id list.
      *
-     * @param array $dataids The array of user id's to get datafields for.
+     * @param array $dataids The array of user id's to get badges for.
      * @return array The datafields structure.
      */
     private static function get_user_data($dataids) {
