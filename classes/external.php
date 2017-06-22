@@ -75,9 +75,9 @@ class external extends \external_api {
             $userrs = $DB->get_recordset_list('user', 'id', $userids, 'id', $ufields);
         }
 
-        $datafields = self::get_user_datafields($userids);
-        $tags = self::get_user_tags($userids);
-        $badges = self::get_user_badges($userids);
+        $datafields = datatypes\datafield::get_data($userids, 'user');
+        $tags = datatypes\tag::get_data($userids, 'user');
+        $badges = datatypes\badge_instance::get_data($userids, 'user');
         $enrolments = self::get_user_enrolments($userids);
 
         foreach ($userrs as $user) {
@@ -113,18 +113,9 @@ class external extends \external_api {
                  'lastaccess' => new \external_value(PARAM_INT, 'Last known site access timestamp.'),
                  'lastlogin' => new \external_value(PARAM_INT, 'Last login timestamp.'),
                  'description' => new \external_value(PARAM_RAW, 'User summary of themselves.'),
-                 'datafields' => new \external_multiple_structure(
-                    new \external_single_structure(
-                        ['name' => new \external_value(PARAM_TEXT, 'Name of this field.'),
-                         'description' => new \external_value(PARAM_RAW, 'Description of this field.'),
-                         'value' => new \external_value(PARAM_RAW, 'Value of this field for this user.'),
-                        ],
-                        'datafield'
-                    ),
-                    'datafields'
-                 ),
-                 'tags' => self::tag_structure(),
-                 'badges' => self::badge_structure(true),
+                 'datafields' => new \external_multiple_structure(datatypes\datafield::structure(), 'datafields'),
+                 'tags' => new \external_multiple_structure(datatypes\tag::structure(), 'tags'),
+                 'badges' => new \external_multiple_structure(datatypes\badge_instance::structure(), 'badges'),
                  'courseenrolments' => new \external_multiple_structure(
                     new \external_single_structure(
                         ['courseid' => new \external_value(PARAM_INT, 'Course id.'),
@@ -182,10 +173,10 @@ class external extends \external_api {
             $coursesrs = $DB->get_recordset_list('course', 'id', $courseids, 'id', $cfields);
         }
 
-        $tags = self::get_course_tags($courseids);
+        $tags = datatypes\tag::get_data($userids, 'course');
         $outcomes = self::get_course_outcomes($courseids);
         $competencies = self::get_course_competencies($courseids);
-        $badges = self::get_course_badges($courseids);
+        $badges = datatypes\badge::get_data($userids, 'course');
 
         foreach ($coursesrs as $course) {
             $courseprofile = [];
@@ -229,10 +220,10 @@ class external extends \external_api {
                  'description' => new \external_value(PARAM_RAW, 'Course description.'),
                  'starttime' => new \external_value(PARAM_INT, 'Start of the course timestamp.'),
                  'endtime' => new \external_value(PARAM_INT, 'End of the course timestamp.'),
-                 'tags' => self::tag_structure(),
+                 'tags' => new \external_multiple_structure(datatypes\tag::structure(), 'tags'),
                  'competencies' => self::competency_structure(),
                  'outcomes' => self::outcome_structure(),
-                 'badges' => self::badge_structure(),
+                 'badges' => new \external_multiple_structure(datatypes\badge::structure(), 'badges'),
                 ],
                 'course'
             ),
@@ -284,7 +275,7 @@ class external extends \external_api {
                          'name' => new \external_value(PARAM_TEXT, 'Course object name.'),
                          'description' => new \external_value(PARAM_TEXT, 'Course object description.'),
                          'type' => new \external_value(PARAM_TEXT, 'Course object type.'),
-                         'tags' => self::tag_structure(),
+                         'tags' => new \external_multiple_structure(datatypes\tag::structure(), 'tags'),
                          'competencies' => self::competency_structure(),
                          'outcomes' => self::outcome_structure(),
                         ],
@@ -354,24 +345,6 @@ class external extends \external_api {
     }
 
     /**
-     * Internal function defining a tag structure for use in "_returns" definitions.
-     *
-     * @return \external_multiple_structure
-     */
-
-    private static function tag_structure() {
-        return new \external_multiple_structure(
-            new \external_single_structure(
-                ['name' => new \external_value(PARAM_TEXT, 'Name of this tag.'),
-                 'description' => new \external_value(PARAM_RAW, 'Description of this tag.'),
-                ],
-                'tag'
-            ),
-            'tags'
-         );
-    }
-
-    /**
      * Internal function defining an outcomes structure for use in "_returns" definitions.
      *
      * @param boolean $withproficiency True if including proficiency.
@@ -403,165 +376,6 @@ class external extends \external_api {
             $structarray['proficiency'] = new \external_value(PARAM_TEXT, 'User proficiency of this competency.');
         }
         return new \external_multiple_structure(new \external_single_structure($structarray, 'competency'), 'competencies');
-    }
-
-    /**
-     * Internal function defining a badges structure for use in "_returns" definitions.
-     *
-     * @param boolean $withissuedtime True if including issued time.
-     * @return \external_multiple_structure
-     */
-
-    private static function badge_structure($withissuedtime = false) {
-        $structarray = ['id' => new \external_value(PARAM_INT, 'Badge id.'),
-            'name' => new \external_value(PARAM_TEXT, 'Name of this badge.'),
-            'description' => new \external_value(PARAM_RAW, 'Description of this badge.')];
-        if ($withissuedtime) {
-            $structarray['issuedtime'] = new \external_value(PARAM_INT, 'Issued timestamp.');
-        }
-        return new \external_multiple_structure(new \external_single_structure($structarray, 'badge'), 'badges');
-    }
-
-    /**
-     * Internal function to return the user datafields structure for the user id list.
-     *
-     * @param array $userids The array of user id's to get datafields for.
-     * @return array The datafields structure.
-     */
-    private static function get_user_datafields($userids = []) {
-        global $DB;
-
-        $sql = '';
-        $params = [];
-        if (!empty($userids)) {
-            list($sql, $params) = $DB->get_in_or_equal($userids);
-            $sql = 'uid.userid ' . $sql . ' ';
-        }
-
-        $select = 'SELECT uid.id,uid.userid,uid.fieldid,uid.data,uid.dataformat,uif.name,uif.description,uif.descriptionformat ';
-        $from = 'FROM {user_info_data} uid ';
-        $join = 'INNER JOIN {user_info_field} uif ON uid.fieldid = uif.id ';
-        $where = !empty($sql) ? 'WHERE ' . $sql : '';
-        $order = 'ORDER BY uid.userid ASC ';
-        $sql = $select . $from . $join . $where . $order;
-
-        $dfsrs = $DB->get_recordset_sql($sql, $params);
-
-        $curritemid = -1;
-        $datafields = [];
-        foreach ($dfsrs as $datafieldrec) {
-            if ($datafieldrec->userid != $curritemid) {
-                $curritemid = $datafieldrec->userid;
-            }
-            $datafields[$curritemid][] = ['name' => format_string($datafieldrec->name, true),
-                'description' => format_text($datafieldrec->description, $datfieldrec->descriptionformat),
-                'value' => format_text($datafieldrec->data, $datafieldrec->dataformat)];
-        }
-        $dfsrs->close();
-
-        return $datafields;
-    }
-
-    /**
-     * Internal function to return the course tags structure for the course id list.
-     *
-     * @param array $courseids The array of course id's to get tags for.
-     * @return array The tags structure.
-     */
-    private static function get_course_tags($courseids = []) {
-        return self::get_tags('course', $courseids);
-    }
-
-    /**
-     * Internal function to return the user tags structure for the user id list.
-     *
-     * @param array $userids The array of user id's to get tags for.
-     * @return array The tags structure.
-     */
-    private static function get_user_tags($userids = []) {
-        return self::get_tags('user', $userids);
-    }
-
-    /**
-     * Internal function to return the tags structure for the specified type and itemid list.
-     *
-     * @param string $type The tag 'itemtype' value.
-     * @param array $userids The array of user id's to get tags for.
-     * @return array The tags structure.
-     */
-    private static function get_tags($type, $itemids = []) {
-        global $DB;
-
-        $sql = '';
-        $params = [];
-        if (!empty($itemids)) {
-            list($sql, $params) = $DB->get_in_or_equal($itemids);
-            $sql = 'AND ti.itemid ' . $sql . ' ';
-        }
-        $params = array_merge([$type], $params);
-
-        $select = 'SELECT ti.id, ti.tagid, ti.itemid, t.rawname, t.description, t.descriptionformat ';
-        $from = 'FROM {tag_instance} ti ';
-        $join = 'INNER JOIN {tag} t ON ti.tagid = t.id ';
-        $where = 'WHERE ti.itemtype = ? ' . $sql;
-        $order = 'ORDER BY ti.itemid ASC ';
-        $sql = $select . $from . $join . $where . $order;
-
-        $tagsrs = $DB->get_recordset_sql($sql, $params);
-
-        $curritemid = -1;
-        $tags = [];
-        foreach ($tagsrs as $tagrec) {
-            if ($tagrec->itemid != $curritemid) {
-                $curritemid = $tagrec->itemid;
-            }
-            $tags[$curritemid][] = ['name' => format_string($tagrec->rawname, true),
-                'description' => format_text($tagrec->description, $tagrec->descriptionformat)];
-        }
-        $tagsrs->close();
-
-        return $tags;
-    }
-
-    /**
-     * Internal function to return the user badges structure for the user id list.
-     *
-     * @param array $userids The array of user id's to get badges for.
-     * @return array The badges structure.
-     */
-    private static function get_user_badges($userids = []) {
-        global $DB;
-
-        $sql = '';
-        $params = [];
-        if (!empty($userids)) {
-            list($sql, $params) = $DB->get_in_or_equal($userids);
-            $sql = 'bi.userid ' . $sql . ' ';
-        }
-
-        $select = 'SELECT bi.id, bi.userid, bi.badgeid, bi.dateissued, b.name, b.description ';
-        $from = 'FROM {badge_issued} bi ';
-        $join = 'INNER JOIN {badge} b ON bi.badgeid = b.id ';
-        $where = !empty($sql) ? 'WHERE ' . $sql : '';
-        $order = 'ORDER BY bi.userid ASC ';
-        $sql = $select . $from . $join . $where . $order;
-
-        $badgesrs = $DB->get_recordset_sql($sql, $params);
-
-        $curritemid = -1;
-        $badges = [];
-        foreach ($badgesrs as $badgerec) {
-            if ($badgerec->userid != $curritemid) {
-                $curritemid = $badgerec->userid;
-            }
-            $badges[$curritemid][] = ['id' => $badgerec->badgeid,
-                'name' => format_string($badgerec->name, true),
-                'description' => format_text($badgerec->description, 0),
-                'issuedtime' => $badgerec->dateissued];
-        }
-        $badgesrs->close();
-
-        return $badges;
     }
 
     /**
@@ -695,48 +509,5 @@ class external extends \external_api {
         $competenciesrs->close();
 
         return $competencies;
-    }
-
-    /**
-     * Internal function to return the course badges structure for the course id list.
-     *
-     * @param array $courseids The array of course id's to get badges for.
-     * @return array The badges structure.
-     */
-    private static function get_course_badges($courseids = []) {
-        global $DB;
-
-        $cnd2 = '';
-        $params = [];
-        if (!empty($courseids)) {
-            list($sql, $params) = $DB->get_in_or_equal($courseids);
-            $cnd2 = 'AND bcp.value ' . $sql . ' ';
-        }
-        $cnd1 = $DB->sql_like('bcp.name', '?') . ' ';
-        $params = array_merge(['course_%'], $params);
-
-        $select = 'SELECT bcp.id, bcp.value, bc.badgeid, b.name, b.description ';
-        $from = 'FROM {badge_criteria_param} bcp ';
-        $join = 'INNER JOIN {badge_criteria} bc ON bcp.critid = bc.id ' .
-                'INNER JOIN {badge} b ON bc.badgeid = b.id ';
-        $where = 'WHERE ' . $cnd1 . $cnd2;
-        $order = 'ORDER BY bcp.value ASC ';
-        $sql = $select . $from . $join . $where . $order;
-
-        $badgesrs = $DB->get_recordset_sql($sql, $params);
-
-        $curritemid = -1;
-        $badges = [];
-        foreach ($badgesrs as $badgerec) {
-            if ($badgerec->value != $curritemid) {
-                $curritemid = $badgerec->value;
-            }
-            $badges[$curritemid][] = ['id' => $badgerec->badgeid,
-                'name' => format_string($badgerec->name, true),
-                'description' => format_text($badgerec->description, 0)];
-        }
-        $badgesrs->close();
-
-        return $badges;
     }
 }
