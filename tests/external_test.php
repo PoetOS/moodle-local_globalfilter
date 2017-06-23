@@ -84,6 +84,9 @@ class local_globalfilter_external_testcase extends externallib_advanced_testcase
         profile_save_data((object)['id' => $user1->id, 'profile_field_frogdesc' => 'Green and wet.']);
         profile_save_data((object)['id' => $user1->id, 'profile_field_frogname' => 'Leopard']);
 
+        $usertestdata[$user1->id]['language'] = 'en';
+        $usertestdata[$user1->id]['description'] = format_text('This is a description for user 1', FORMAT_MOODLE);
+
         $usertestdata[$user1->id]['datafields'][] = 'Description of frog';
         $usertestdata[$user1->id]['datafields'][] = 'Name of frog';
 
@@ -110,12 +113,14 @@ class local_globalfilter_external_testcase extends externallib_advanced_testcase
         // Check that we retrieve the expected number of profiles.
         $this->assertEquals(1, count($returnedprofiles));
 
-//print_object($returnedprofiles);
-//print_object($usertestdata);
         // Now check we have the expected data. Don't need to test for presence of key items, sinc the external services does this.
         foreach ($returnedprofiles as $profiledata) {
             $userid = $profiledata['userid'];
             $this->assertArrayHasKey($userid, $usertestdata);
+
+            // Verify standard profile data.
+            $this->assertEquals($usertestdata[$userid]['language'], $profiledata['language']);
+            $this->assertEquals($usertestdata[$userid]['description'], $profiledata['description']);
 
             // Verify extra profile data.
             $this->assertCount(2, $profiledata['datafields']);
