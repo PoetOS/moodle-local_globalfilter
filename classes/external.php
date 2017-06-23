@@ -248,7 +248,7 @@ class external extends \external_api {
     }
 
     /**
-     * Describes the get_course_profile return value.
+     * Describes the get_course_object_profile return value.
      *
      * @return \external_single_structure
      */

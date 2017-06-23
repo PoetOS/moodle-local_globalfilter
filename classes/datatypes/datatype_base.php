@@ -58,7 +58,8 @@ class datatype_base {
      * @return array The datafields structure.
      */
     public static function get_data($dataids = [], $type = null) {
-        return [];
+        $dataids[] = $type;
+        return $dataids;
     }
 
     /**
@@ -78,7 +79,9 @@ class datatype_base {
             }
             $recarr = [];
             foreach ($fields as $field => $typedef) {
-                list($type, $dataname) = explode(':', $typedef);
+                // $typedef can have type followed by the data field name. If not present, it is the same as $field. Append an extra
+                // array element in case its not present, to avoid a PHP warning of the list being too short.
+                list($type, $dataname) = array_merge(explode(':', $typedef), ['']);
                 if (empty($dataname)) {
                     $dataname = $field;
                 }

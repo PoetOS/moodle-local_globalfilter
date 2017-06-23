@@ -66,7 +66,7 @@ class tag extends datatype_base {
         if ($type === null) {
             $type = 'user';
         } else if (($type != 'user') && ($type != 'course')) {
-            throw new coding_exception('Unknown tag type: '.$type);
+            throw new \coding_exception('Unknown tag type: '.$type);
             return false;
         }
 

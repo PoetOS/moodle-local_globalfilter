@@ -77,7 +77,7 @@ class competency extends datatype_base {
         } else if ($type == 'course') {
             return self::get_course_data($dataids);
         } else {
-            throw new coding_exception('Unknown outcome type: '.$type);
+            throw new \coding_exception('Unknown outcome type: '.$type);
             return false;
         }
     }

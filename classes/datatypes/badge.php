@@ -77,7 +77,7 @@ class badge extends datatype_base {
         } else if ($type == 'course') {
             return self::get_course_data($dataids);
         } else {
-            throw new coding_exception('Unknown badge type: '.$type);
+            throw new \coding_exception('Unknown badge type: '.$type);
             return false;
         }
     }

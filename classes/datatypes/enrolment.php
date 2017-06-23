@@ -73,7 +73,7 @@ class enrolment extends datatype_base {
         }
 
         if ($type != 'user') {
-            throw new coding_exception('Unknown data type: '.$type);
+            throw new \coding_exception('Unknown data type: '.$type);
         }
 
         $cnd = '';
@@ -102,11 +102,16 @@ class enrolment extends datatype_base {
         $enrols = self::create_data_structure($enrolsrs, 'userid', $fields);
         $enrolsrs->close();
 
+        $outcomes = outcome_instance::get_data($dataids, 'user');
+        $competencies = competency_instance::get_data($dataids, 'user');
+
         foreach ($enrols as $useridx => $enrolrecs) {
             foreach ($enrolrecs as $courseidx => $courserecs) {
                 $enrols[$useridx][$courseidx]['lastaccess'] = 0;
-                $enrols[$useridx][$courseidx]['competencies'] = [];
-                $enrols[$useridx][$courseidx]['outcomes'] = [];
+                $enrols[$useridx][$courseidx]['competencies'] = isset($competencies[$useridx][$courserecs['courseid']]) ?
+                    $competencies[$useridx][$courserecs['courseid']] : [];
+                $enrols[$useridx][$courseidx]['outcomes'] = isset($outcomes[$useridx][$courserecs['courseid']]) ?
+                    $outcomes[$useridx][$courserecs['courseid']] : [];
             }
         }
 

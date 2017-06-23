@@ -69,7 +69,7 @@ class datafield extends datatype_base {
         }
 
         if ($type != 'user') {
-            throw new coding_exception('Unknown data type: '.$type);
+            throw new \coding_exception('Unknown data type: '.$type);
         }
 
         $cnd = '';
