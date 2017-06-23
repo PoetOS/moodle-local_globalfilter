@@ -51,6 +51,8 @@ class local_globalfilter_external_testcase extends externallib_advanced_testcase
      */
     public function test_get_user_profile($users = []) {
         global $DB, $CFG;
+        require_once($CFG->dirroot . '/user/editlib.php');
+        require_once($CFG->dirroot . '/user/profile/lib.php');
 
         $this->resetAfterTest(true);
 
@@ -91,7 +93,6 @@ class local_globalfilter_external_testcase extends externallib_advanced_testcase
         $usertestdata[$user1->id]['tags'][] = 'Dance';
         $usertestdata[$user1->id]['tags'][] = 'Guitar';
         $usertestdata[$user1->id]['tags'][] = 'Cooking';
-        require_once($CFG->dirroot . '/user/editlib.php');
         $user1->interests = $usertestdata[$user1->id]['tags'];
         useredit_update_interests($user1, $user1->interests);
 

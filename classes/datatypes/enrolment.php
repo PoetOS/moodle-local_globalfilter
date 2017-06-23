@@ -108,10 +108,10 @@ class enrolment extends datatype_base {
         foreach ($enrols as $useridx => $enrolrecs) {
             foreach ($enrolrecs as $courseidx => $courserecs) {
                 $enrols[$useridx][$courseidx]['lastaccess'] = 0;
-                $enrols[$useridx][$courseidx]['competencies'] = isset($competencies[$useridx][$courserecs['courseid']]) ?
-                    $competencies[$useridx][$courserecs['courseid']] : [];
-                $enrols[$useridx][$courseidx]['outcomes'] = isset($outcomes[$useridx][$courserecs['courseid']]) ?
-                    $outcomes[$useridx][$courserecs['courseid']] : [];
+                $enrols[$useridx][$courseidx]['competencies'] = isset(
+                    $competencies[$useridx][$courserecs['courseid']]) ? $competencies[$useridx][$courserecs['courseid']] : [];
+                $enrols[$useridx][$courseidx]['outcomes'] = isset(
+                    $outcomes[$useridx][$courserecs['courseid']]) ? $outcomes[$useridx][$courserecs['courseid']] : [];
             }
         }
 
