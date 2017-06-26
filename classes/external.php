@@ -26,6 +26,7 @@
 namespace local_globalfilter;
 
 defined('MOODLE_INTERNAL') || die();
+require_once($CFG->dirroot.'/lib/externallib.php');
 
 /**
  * Globalfilter external functions
