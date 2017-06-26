@@ -84,6 +84,7 @@ class local_globalfilter_external_testcase extends externallib_advanced_testcase
         profile_save_data((object)['id' => $user1->id, 'profile_field_frogdesc' => 'Green and wet.']);
         profile_save_data((object)['id' => $user1->id, 'profile_field_frogname' => 'Leopard']);
 
+        $usertestdata = [];
         $usertestdata[$user1->id]['language'] = 'en';
         $usertestdata[$user1->id]['description'] = format_text('This is a description for user 1', FORMAT_MOODLE);
 
@@ -123,31 +124,31 @@ class local_globalfilter_external_testcase extends externallib_advanced_testcase
             $this->assertEquals($usertestdata[$userid]['description'], $profiledata['description']);
 
             // Verify extra profile data.
-            $this->assertCount(2, $profiledata['datafields']);
-            foreach ($profiledata['datafields'] as $datafield) {
-                $testdata[] = $datafield['name'];
-            }
-            foreach ($usertestdata[$userid]['datafields'] as $testvalue) {
-                $this->assertContains($testvalue, $testdata);
-            }
+            $this->testdata_contains($profiledata['datafields'], 'name', $usertestdata[$userid]['datafields'], 2);
 
             // Verify tag data.
-            $this->assertCount(5, $profiledata['tags']);
-            foreach ($profiledata['tags'] as $tag) {
-                $testdata[] = $tag['name'];
-            }
-            foreach ($usertestdata[$userid]['tags'] as $testvalue) {
-                $this->assertContains($testvalue, $testdata);
-            }
+            $this->testdata_contains($profiledata['tags'], 'name', $usertestdata[$userid]['tags'], 5);
 
             // Verify enrolment data.
-            $this->assertCount(1, $profiledata['courseenrolments']);
-            foreach ($profiledata['courseenrolments'] as $enrolment) {
-                $testdata[] = $enrolment['courseid'];
-            }
-            foreach ($usertestdata[$userid]['enrolments'] as $testvalue) {
-                $this->assertContains($testvalue, $testdata);
-            }
+            $this->testdata_contains($profiledata['courseenrolments'], 'courseid', $usertestdata[$userid]['enrolments'], 1);
+        }
+    }
+
+    /**
+     * Helper function for common "contains" checking.
+     * @param array $externaldata The data to test against.
+     * @param string $extindex The external data array index to look for.
+     * @param array $expecteddata The expected data.
+     * @param int $expectedcount The number of items expected.
+     */
+    private function testdata_contains($externaldata, $extindex, $expecteddata, $expectedcount) {
+        $testdata = [];
+        $this->assertCount($expectedcount, $externaldata);
+        foreach ($externaldata as $data) {
+            $testdata[] = $data[$extindex];
+        }
+        foreach ($expecteddata as $testvalue) {
+            $this->assertContains($testvalue, $testdata);
         }
     }
 }
