@@ -63,7 +63,7 @@ class local_globalfilter_external_testcase extends externallib_advanced_testcase
         $DB->insert_record('user_info_field',
             ['shortname' => 'frogdesc', 'name' => 'Description of frog', 'categoryid' => 1, 'datatype' => 'textarea']);
         $DB->insert_record('user_info_field',
-            ['shortname' => 'frogname', 'name' => 'Name of frog', 'categoryid' => 1, 'datatype' => 'text'));
+            ['shortname' => 'frogname', 'name' => 'Name of frog', 'categoryid' => 1, 'datatype' => 'text']);
 
         // Add a user.
         $user1 = array(
