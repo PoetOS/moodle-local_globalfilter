@@ -49,7 +49,7 @@ class local_globalfilter_external_testcase extends externallib_advanced_testcase
      * @param array $users It contains an array (list of ids).
      * @return array
      */
-    public function test_get_user_profile($users = []) {
+    public function test_get_user_profile() {
         global $DB, $CFG;
         require_once($CFG->dirroot . '/user/editlib.php');
         require_once($CFG->dirroot . '/user/profile/lib.php');
@@ -59,16 +59,13 @@ class local_globalfilter_external_testcase extends externallib_advanced_testcase
         // Create a course to use.
         $course = self::getDataGenerator()->create_course();
 
-        // Add a custom field of textarea type.
-        $cfid1 = $DB->insert_record('user_info_field', array(
-                'shortname' => 'frogdesc', 'name' => 'Description of frog', 'categoryid' => 1,
-                'datatype' => 'textarea'));
+        // Addsome custom data fields.
+        $DB->insert_record('user_info_field',
+            ['shortname' => 'frogdesc', 'name' => 'Description of frog', 'categoryid' => 1, 'datatype' => 'textarea']);
+        $DB->insert_record('user_info_field',
+            ['shortname' => 'frogname', 'name' => 'Name of frog', 'categoryid' => 1, 'datatype' => 'text'));
 
-        // Add another custom field, this time of normal text type.
-        $cfid2 = $DB->insert_record('user_info_field', array(
-                'shortname' => 'frogname', 'name' => 'Name of frog', 'categoryid' => 1,
-                'datatype' => 'text'));
-
+        // Add a user.
         $user1 = array(
             'username' => 'usernametest1',
             'firstname' => 'First Name User Test 1',

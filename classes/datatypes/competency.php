@@ -89,7 +89,46 @@ class competency extends datatype_base {
      * @return array The datafields structure.
      */
     private static function get_user_data($dataids) {
-        return [];
+        global $DB;
+
+        $cnd = '';
+        $params = [];
+        if (!empty($dataids)) {
+            list($cnd, $params) = $DB->get_in_or_equal($dataids);
+            $cnd = 'AND cu.userid ' . $cnd . ' ';
+        }
+
+        $select = 'SELECT cu.id, cu.competencyid, cu.userid, cu.courseid, cu.proficiency, s.scale, ' .
+                  'c.shortname, c.description, c.descriptionformat ';
+        $from = 'FROM {competency_usercompcourse} cu ';
+        $join = 'INNER JOIN {competency} c ON cu.competencyid = c.id ';
+        $join .= 'INNER JOIN {scale} s ON cu.grade = s.id ';
+        $where = 'WHERE cu.proficiency IS NOT NULL AND cu.grade IS NOT NULL ' . $cnd;
+        $order = 'ORDER BY cu.userid, cu.courseid ASC ';
+        $sql = $select . $from . $join . $where . $order;
+
+        $competenciesrs = $DB->get_recordset_sql($sql, $params);
+        $fields = ['id' => 'int:competencyid', 'name' => 'string:shortname',
+            'description' => 'text', 'scale' => 'string', 'courseid' => 'int', 'proficiency' => 'int'];
+        $competencies = self::create_data_structure($competenciesrs, 'userid', $fields);
+        $competenciesrs->close();
+
+        $usercompetencies = [];
+        foreach ($competencies as $userid => $usercomprec) {
+            $curcourseid = -1;
+            $recarr = [];
+            foreach ($usercomprec as $courserec) {
+                if ($courserec['courseid'] != $currcourseid) {
+                    $currcourseid = $courserec['courseid'];
+                }
+                unset($courserec['courseid']);
+                $scale = explode(',', $courserec['scale']);
+                $courserec['proficiency'] = isset($scale[$courserec['proficiency']]) ? $scale[$courserec['proficiency']] : '';
+                unset($courserec['scale']);
+                $usercompetencies[$userid][$currcourseid][] = $courserec;
+            }
+        }
+        return $usercompetencies;
     }
 
     /**
@@ -111,7 +150,7 @@ class competency extends datatype_base {
         $select = 'SELECT cc.id, cc.courseid, c.shortname, c.description, c.descriptionformat ';
         $from = 'FROM {competency_coursecomp} cc ';
         $join = 'INNER JOIN {competency} c ON cc.competencyid = c.id ';
-        $where = !empty($sql) ? 'WHERE ' . $cnd : '';
+        $where = !empty($cnd) ? 'WHERE ' . $cnd : '';
         $order = 'ORDER BY cc.courseid ASC ';
         $sql = $select . $from . $join . $where . $order;
 
