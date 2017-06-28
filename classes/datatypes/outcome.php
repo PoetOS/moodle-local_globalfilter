@@ -89,7 +89,48 @@ class outcome extends datatype_base {
      * @return array The datafields structure.
      */
     private static function get_user_data($dataids) {
-        return [];
+        global $DB;
+
+        $cnd = '';
+        $params = [];
+        if (!empty($dataids)) {
+            list($cnd, $params) = $DB->get_in_or_equal($dataids);
+            $cnd = 'AND gg.userid ' . $cnd . ' ';
+        }
+
+        $select = 'SELECT gg.id, gg.userid, gg.finalgrade, gi.courseid, gi.outcomeid, gi.scaleid, s.scale, ' .
+                  'go.fullname, go.description, go.descriptionformat ';
+        $from = 'FROM {grade_grades} gg ';
+        $join = 'INNER JOIN {grade_items} gi ON gg.itemid = gi.id ';
+        $join .= 'INNER JOIN {grade_outcomes} go ON gi.outcomeid = go.id ';
+        $join .= 'INNER JOIN {scale} s ON gi.scaleid = s.id ';
+        $where = 'WHERE gi.outcomeid IS NOT NULL AND gi.scaleid IS NOT NULL ' . $cnd;
+        $order = 'ORDER BY gg.userid, gi.courseid ASC ';
+        $sql = $select . $from . $join . $where . $order;
+
+        $outcomesrs = $DB->get_recordset_sql($sql, $params);
+        $fields = ['id' => 'int:outcomeid', 'name' => 'string:fullname',
+            'description' => 'text', 'scale' => 'string', 'courseid' => 'int', 'proficiency' => 'int:finalgrade'];
+        $outcomes = self::create_data_structure($outcomesrs, 'userid', $fields);
+        $outcomesrs->close();
+
+        $useroutcomes = [];
+        foreach ($outcomes as $userid => $useroutcomerec) {
+            $curcourseid = -1;
+            $recarr = [];
+            foreach ($useroutcomerec as $courserec) {
+                if ($courserec['courseid'] != $curcourseid) {
+                    $curcourseid = $courserec['courseid'];
+                }
+                unset($courserec['courseid']);
+                $scale = explode(',', $courserec['scale']);
+                $scaleidx = (int)$courserec['proficiency'] - 1;
+                $courserec['proficiency'] = isset($scale[$scaleidx]) ? $scale[$scaleidx] : '';
+                unset($courserec['scale']);
+                $useroutcomes[$userid][$curcourseid][] = $courserec;
+            }
+        }
+        return $useroutcomes;
     }
 
     /**

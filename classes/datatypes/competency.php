@@ -118,14 +118,14 @@ class competency extends datatype_base {
             $curcourseid = -1;
             $recarr = [];
             foreach ($usercomprec as $courserec) {
-                if ($courserec['courseid'] != $currcourseid) {
-                    $currcourseid = $courserec['courseid'];
+                if ($courserec['courseid'] != $curcourseid) {
+                    $curcourseid = $courserec['courseid'];
                 }
                 unset($courserec['courseid']);
                 $scale = explode(',', $courserec['scale']);
                 $courserec['proficiency'] = isset($scale[$courserec['proficiency']]) ? $scale[$courserec['proficiency']] : '';
                 unset($courserec['scale']);
-                $usercompetencies[$userid][$currcourseid][] = $courserec;
+                $usercompetencies[$userid][$curcourseid][] = $courserec;
             }
         }
         return $usercompetencies;

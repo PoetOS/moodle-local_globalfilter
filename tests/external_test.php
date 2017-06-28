@@ -50,7 +50,7 @@ class local_globalfilter_external_testcase extends externallib_advanced_testcase
      * @return array
      */
     public function test_get_user_profile() {
-        global $DB, $CFG;
+        global $DB, $CFG, $USER;
         require_once($CFG->dirroot . '/user/editlib.php');
         require_once($CFG->dirroot . '/user/profile/lib.php');
 
@@ -103,6 +103,24 @@ class local_globalfilter_external_testcase extends externallib_advanced_testcase
         $roleid = $this->assignUserCapability('moodle/user:viewdetails', $context->id);
         $this->getDataGenerator()->enrol_user($user1->id, $course->id, $roleid, 'manual');
 
+        // Add competencies.
+        $compsettings = new \core_competency\course_competency_settings(0,
+            (object)['courseid' => $course->id, 'pushratingstouserplans' => false]);
+        $compsettings->create();
+        $coursecontext = context_course::instance($course->id);
+
+        // Create a competency for the course.
+        $lpg = self::getDataGenerator()->get_plugin_generator('core_competency');
+        $framework = $lpg->create_framework();
+        // Do not push ratings from course to user plans.
+        $comp = $lpg->create_competency(['competencyframeworkid' => $framework->get('id')]);
+        $lpg->create_course_competency(['courseid' => $course->id, 'competencyid' => $comp->get('id')]);
+
+        // Add evidence that sets a grade to the course.
+        $evidence = \core_competency\api::add_evidence($user1->id, $comp, $coursecontext,
+            \core_competency\evidence::ACTION_OVERRIDE, 'commentincontext', 'core', null, false, null, 2, $USER->id);
+
+        $usertestdata[$user1->id]['competencies'][] = 'Competency shortname 2';
         // Call the external function.
         $returnedprofiles = \local_globalfilter\external::get_user_profile(['ids' => [$user1->id]]);
         $returnedprofiles = external_api::clean_returnvalue(\local_globalfilter\external::get_user_profile_returns(),
@@ -121,13 +139,17 @@ class local_globalfilter_external_testcase extends externallib_advanced_testcase
             $this->assertEquals($usertestdata[$userid]['description'], $profiledata['description']);
 
             // Verify extra profile data.
-            $this->testdata_contains($profiledata['datafields'], 'name', $usertestdata[$userid]['datafields'], 2);
+            $this->data_contains($profiledata['datafields'], 'name', $usertestdata[$userid]['datafields'], 2);
 
             // Verify tag data.
-            $this->testdata_contains($profiledata['tags'], 'name', $usertestdata[$userid]['tags'], 5);
+            $this->data_contains($profiledata['tags'], 'name', $usertestdata[$userid]['tags'], 5);
 
             // Verify enrolment data.
-            $this->testdata_contains($profiledata['courseenrolments'], 'courseid', $usertestdata[$userid]['enrolments'], 1);
+            $this->data_contains($profiledata['courseenrolments'], 'courseid', $usertestdata[$userid]['enrolments'], 1);
+
+            // Verify enrolment competency data.
+            $this->data_contains($profiledata['courseenrolments'][0]['competencies'], 'name',
+                $usertestdata[$userid]['competencies'], 1);
         }
     }
 
@@ -138,7 +160,7 @@ class local_globalfilter_external_testcase extends externallib_advanced_testcase
      * @param array $expecteddata The expected data.
      * @param int $expectedcount The number of items expected.
      */
-    private function testdata_contains($externaldata, $extindex, $expecteddata, $expectedcount) {
+    public function data_contains($externaldata, $extindex, $expecteddata, $expectedcount) {
         $testdata = [];
         $this->assertCount($expectedcount, $externaldata);
         foreach ($externaldata as $data) {
