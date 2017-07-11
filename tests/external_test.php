@@ -117,7 +117,7 @@ class local_globalfilter_external_testcase extends externallib_advanced_testcase
         $lpg->create_course_competency(['courseid' => $course->id, 'competencyid' => $comp->get('id')]);
 
         // Add evidence that sets a grade to the course.
-        $evidence = \core_competency\api::add_evidence($user1->id, $comp, $coursecontext,
+        \core_competency\api::add_evidence($user1->id, $comp, $coursecontext,
             \core_competency\evidence::ACTION_OVERRIDE, 'commentincontext', 'core', null, false, null, 2, $USER->id);
 
         $usertestdata[$user1->id]['competencies'][] = 'Competency shortname 2';

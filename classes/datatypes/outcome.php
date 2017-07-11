@@ -117,7 +117,6 @@ class outcome extends datatype_base {
         $useroutcomes = [];
         foreach ($outcomes as $userid => $useroutcomerec) {
             $curcourseid = -1;
-            $recarr = [];
             foreach ($useroutcomerec as $courserec) {
                 if ($courserec['courseid'] != $curcourseid) {
                     $curcourseid = $courserec['courseid'];

@@ -54,18 +54,19 @@ class tag extends datatype_base {
     }
 
     /**
-     * Internal function to return the user datafields structure for the user id list.
+     * Internal function to return the tags structure for the tag item id list.
      *
-     * @param array $dataids The array of user id's to get datafields for.
+     * @param array $dataids The array of tag item id's to get tags for.
      * @param string $type Optional type to delegate other functions for.
      * @return array The datafields structure.
      */
     public static function get_data($dataids = [], $type = null) {
         global $DB;
 
+        $validtypes = ['user', 'course', 'course_modules'];
         if ($type === null) {
             $type = 'user';
-        } else if (($type != 'user') && ($type != 'course')) {
+        } else if (!in_array($type, $validtypes)) {
             throw new \coding_exception('Unknown tag type: '.$type);
             return false;
         }

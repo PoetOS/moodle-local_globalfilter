@@ -116,7 +116,6 @@ class competency extends datatype_base {
         $usercompetencies = [];
         foreach ($competencies as $userid => $usercomprec) {
             $curcourseid = -1;
-            $recarr = [];
             foreach ($usercomprec as $courserec) {
                 if ($courserec['courseid'] != $curcourseid) {
                     $curcourseid = $courserec['courseid'];

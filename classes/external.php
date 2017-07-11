@@ -244,8 +244,53 @@ class external extends \external_api {
      * @return array the course objects details
      */
     public static function get_course_object_profile($courseids = [], $courseobjectids = []) {
-        $result = [];
-        return $result;
+        global $DB;
+
+        $params = self::validate_parameters(self::get_course_object_profile_parameters(),
+            ['courseids' => $courseids, 'courseobjectids' => $courseobjectids]);
+        $cobjprofiles = [];
+
+        $cnd = '';
+        $params = [];
+        if (!empty($courseids)) {
+            list($cnd, $params) = $DB->get_in_or_equal($courseids);
+            $cnd = ' cm.course ' . $cnd . ' ';
+        }
+
+        $select = 'SELECT cm.id, cm.course, cm.module, cm.instance, m.name ';
+        $from = 'FROM {course_modules} cm ';
+        $join = 'INNER JOIN {modules} m ON cm.module = m.id ';
+        $where = empty($cnd) ? $cnd : 'WHERE ' . $cnd;
+        $order = 'ORDER BY cm.course, cm.module ASC ';
+        $sql = $select . $from . $join . $where . $order;
+
+        $curcourseid = -1;
+        $courses = [];
+        $moduleinfo = [];
+        $coursemodulesrs = $DB->get_recordset_sql($sql, $params);
+
+        foreach ($coursemodulesrs as $coursemodule) {
+            if ($coursemodule->course != $curcourseid) {
+                $curcourseid = $coursemodule->course;
+                $courses[] = $curcourseid;
+            }
+            if (empty($moduleinfo[$coursemodule->module])) {
+                $moduleinfo[$coursemodule->module] = datatypes\courseobject::get_data($courseids, $coursemodule->name);
+            }
+        }
+        $coursemodulesrs->close();
+
+        foreach ($courses as $courseid) {
+            $cobjprofile = ['courseid' => $courseid];
+            $cobjprofile['courseobjects'] = [];
+            foreach ($moduleinfo as $coursemodules) {
+                foreach ($coursemodules[$courseid] as $coursemodule) {
+                    $cobjprofile['courseobjects'][] = $coursemodule;
+                }
+            }
+            $cobjprofiles[] = $cobjprofile;
+        }
+        return $cobjprofiles;
     }
 
     /**
@@ -254,28 +299,7 @@ class external extends \external_api {
      * @return \external_single_structure
      */
     public static function get_course_object_profile_returns() {
-        return new \external_multiple_structure(
-            new \external_single_structure(
-                ['courseid' => new \external_value(PARAM_INT, 'Course id'),
-                 'courseobjects' => new \external_multiple_structure(
-                    new \external_single_structure(
-                        ['courseobjectid' => new \external_value(PARAM_INT, 'Course object id'),
-                         'name' => new \external_value(PARAM_TEXT, 'Course object name.'),
-                         'description' => new \external_value(PARAM_TEXT, 'Course object description.'),
-                         'type' => new \external_value(PARAM_TEXT, 'Course object type.'),
-                         'tags' => new \external_multiple_structure(datatypes\tag::structure(), 'tags'),
-                         'competencies' => new \external_multiple_structure(datatypes\competency::structure(), 'competencies'),
-                         'outcomes' => new \external_multiple_structure(datatypes\outcome::structure(), 'outcomes'),
-                        ],
-                        'course object'
-                    ),
-                    'courseobjects'
-                 ),
-                ],
-                'course'
-            ),
-            'courses'
-        );
+        return new \external_multiple_structure(datatypes\courseobject::structure(), 'courses');
     }
 
     /**
