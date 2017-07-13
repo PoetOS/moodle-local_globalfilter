@@ -109,8 +109,10 @@ class courseobject extends datatype_base {
         $sql = $select . $from . $join . $where . $order;
         $params = array_merge([$type], $params);
         $moduleinfors = $DB->get_recordset_sql($sql, $params);
+
         $fields = ['courseobjectid' => 'int:id', 'name' => 'string', 'description' => 'text:intro', 'type' => 'string'];
         $courseobjects = self::create_data_structure($moduleinfors, 'course', $fields);
+
         foreach ($courseobjects as $courseid => $courseobject) {
             foreach ($courseobject as $objidx => $objectinstance) {
                 $objectinstance['tags'] = isset(
@@ -122,6 +124,7 @@ class courseobject extends datatype_base {
                 $courseobjects[$courseid][$objidx] = $objectinstance;
             }
         }
+
         $moduleinfors->close();
         return $courseobjects;
     }

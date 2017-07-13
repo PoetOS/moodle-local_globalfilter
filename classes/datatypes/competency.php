@@ -65,18 +65,31 @@ class competency extends datatype_base {
      *
      * @param array $dataids The array of user id's to get datafields for.
      * @param string $type Optional type to delegate other functions for.
+     * @param array $extra Optional extra parameters to be used by the implementation.
      * @return array The datafields structure.
      */
-    public static function get_data($dataids = [], $type = null) {
-        $validtypes = ['user', 'course', 'courseobject'];
+    public static function get_data($dataids = [], $type = null, $extra = null) {
         if ($type === null) {
             $type = 'user';
-        } else if (!in_array($type, $validtypes)) {
-            throw new \coding_exception('Unknown competency type: '.$type);
-            return false;
         }
 
-        return self::{'get_'.$type.'_data'}($dataids);
+        switch ($type) {
+            case 'user':
+                return self::get_user_data($dataids);
+                break;
+
+            case 'course':
+                return self::get_course_data($dataids);
+                break;
+
+            case 'courseobject':
+                return self::get_courseobject_data($dataids);
+                break;
+
+            default:
+                throw new \coding_exception('Unknown competency type: '.$type);
+                return false;
+        }
     }
 
     /**

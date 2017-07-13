@@ -69,15 +69,27 @@ class outcome extends datatype_base {
      * @return array The datafields structure.
      */
     public static function get_data($dataids = [], $type = null, $extra = null) {
-        $validtypes = ['user', 'course', 'courseobject'];
         if ($type === null) {
             $type = 'user';
-        } else if (!in_array($type, $validtypes)) {
-            throw new \coding_exception('Unknown outcome type: '.$type);
-            return false;
         }
 
-        return self::{'get_'.$type.'_data'}($dataids, $extra);
+        switch ($type) {
+            case 'user':
+                return self::get_user_data($dataids, $extra);
+                break;
+
+            case 'course':
+                return self::get_course_data($dataids, $extra);
+                break;
+
+            case 'courseobject':
+                return self::get_courseobject_data($dataids, $extra);
+                break;
+
+            default:
+                throw new \coding_exception('Unknown outcome type: '.$type);
+                return false;
+        }
     }
 
     /**
@@ -188,7 +200,7 @@ class outcome extends datatype_base {
         // Filter on specific coursemodule instances if specified.
         $params2 = [];
         if (!empty($extra['objectids'])) {
-            list($cnd, $params2) = $DB->get_in_or_equal($extra['objectids']);
+            list($cnd2, $params2) = $DB->get_in_or_equal($extra['objectids']);
             $cnd .= 'AND (cm.id ' . $cnd2 . ') ';
         }
         $params = array_merge($params, $params2);

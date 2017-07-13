@@ -58,9 +58,10 @@ class tag extends datatype_base {
      *
      * @param array $dataids The array of tag item id's to get tags for.
      * @param string $type Optional type to delegate other functions for.
+     * @param array $extra Optional extra parameters to be used by the implementation.
      * @return array The datafields structure.
      */
-    public static function get_data($dataids = [], $type = null) {
+    public static function get_data($dataids = [], $type = null, $extra = null) {
         global $DB;
 
         $validtypes = ['user', 'course', 'courseobject'];
