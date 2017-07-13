@@ -257,6 +257,13 @@ class external extends \external_api {
             $cnd = ' cm.course ' . $cnd . ' ';
         }
 
+        $params2 = [];
+        if (!empty($courseobjectids)) {
+            list($cnd2, $params2) = $DB->get_in_or_equal($courseobjectids);
+            $cnd .= (empty($cnd) ? '' : 'AND ') . 'cm.id ' . $cnd2 . ' ';
+        }
+        $params = array_merge($params, $params2);
+
         $select = 'SELECT cm.id, cm.course, cm.module, cm.instance, m.name ';
         $from = 'FROM {course_modules} cm ';
         $join = 'INNER JOIN {modules} m ON cm.module = m.id ';
@@ -275,7 +282,8 @@ class external extends \external_api {
                 $courses[] = $curcourseid;
             }
             if (empty($moduleinfo[$coursemodule->module])) {
-                $moduleinfo[$coursemodule->module] = datatypes\courseobject::get_data($courseids, $coursemodule->name);
+                $moduleinfo[$coursemodule->module] = datatypes\courseobject::get_data($courseids, $coursemodule->name,
+                    ['objectids' => $courseobjectids]);
             }
         }
         $coursemodulesrs->close();
@@ -284,8 +292,10 @@ class external extends \external_api {
             $cobjprofile = ['courseid' => $courseid];
             $cobjprofile['courseobjects'] = [];
             foreach ($moduleinfo as $coursemodules) {
-                foreach ($coursemodules[$courseid] as $coursemodule) {
-                    $cobjprofile['courseobjects'][] = $coursemodule;
+                if (isset($coursemodules[$courseid])) {
+                    foreach ($coursemodules[$courseid] as $coursemodule) {
+                        $cobjprofile['courseobjects'][] = $coursemodule;
+                    }
                 }
             }
             $cobjprofiles[] = $cobjprofile;

@@ -65,9 +65,10 @@ class outcome extends datatype_base {
      *
      * @param array $dataids The array of user id's to get datafields for.
      * @param string $type Optional type to delegate other functions for.
+     * @param array $extra Optional extra parameters to be used by the implementation.
      * @return array The datafields structure.
      */
-    public static function get_data($dataids = [], $type = null) {
+    public static function get_data($dataids = [], $type = null, $extra = null) {
         $validtypes = ['user', 'course', 'courseobject'];
         if ($type === null) {
             $type = 'user';
@@ -76,7 +77,7 @@ class outcome extends datatype_base {
             return false;
         }
 
-        return self::{'get_'.$type.'_data'}($dataids);
+        return self::{'get_'.$type.'_data'}($dataids, $extra);
     }
 
     /**
@@ -163,25 +164,41 @@ class outcome extends datatype_base {
     /**
      * Internal function to return the outcomes structure for the courseobject id list.
      *
-     * @param array $dataids The array of courseobject id's to get outcomes for.
+     * @param array $dataids The array of course id's to get outcomes for.
+     * @param array $extra Extra parameters to be used by the implementation.
      * @return array The outcomes structure.
      */
-    private static function get_courseobject_data($dataids) {
+    private static function get_courseobject_data($dataids, $extra) {
         global $DB;
 
+        // Filter on specific course instances if specified.
         $cnd = '';
         $params = [];
         if (!empty($dataids)) {
             list($cnd, $params) = $DB->get_in_or_equal($dataids);
-            $cnd = 'cm.id ' . $cnd . ' ';
+            $cnd = 'AND (gi.courseid ' . $cnd . ') ';
         }
+
+        // Filter in specific module name if specified.
+        if (!empty($extra['module'])) {
+            $cnd .= 'AND (gi.itemmodule = ?) ';
+            $params[] = $extra['module'];
+        }
+
+        // Filter on specific coursemodule instances if specified.
+        $params2 = [];
+        if (!empty($extra['objectids'])) {
+            list($cnd, $params2) = $DB->get_in_or_equal($extra['objectids']);
+            $cnd .= 'AND (cm.id ' . $cnd2 . ') ';
+        }
+        $params = array_merge($params, $params2);
 
         $select = 'SELECT gi.id, m.id as modid, cm.id as cmid, o.id as outcomeid, o.fullname, o.description, o.descriptionformat ';
         $from = 'FROM {grade_items} gi ';
         $join = 'INNER JOIN {grade_outcomes} o ON gi.outcomeid = o.id ';
         $join .= 'INNER JOIN {modules} m ON gi.itemmodule = m.name ';
         $join .= 'INNER JOIN {course_modules} cm ON m.id = cm.module AND gi.iteminstance = cm.instance ';
-        $where = 'WHERE gi.itemtype = ? AND gi.outcomeid IS NOT NULL ';
+        $where = 'WHERE (gi.itemtype = ?) AND (gi.outcomeid IS NOT NULL) ' . $cnd;
         $order = 'ORDER BY modid, cmid ASC ';
         $sql = $select . $from . $join . $where . $order;
         $params = array_merge(['mod'], $params);

@@ -71,9 +71,10 @@ class courseobject extends datatype_base {
      *
      * @param array $dataids The array of user id's to get enrolments for.
      * @param string $type Optional type to delegate other functions for.
+     * @param array $extra Optional other parameters to be used by the implementation.
      * @return array The enrolments structure.
      */
-    public static function get_data($dataids = [], $type = null) {
+    public static function get_data($dataids = [], $type = null, $extra = null) {
         global $DB;
 
         if ($type === null) {
@@ -84,12 +85,20 @@ class courseobject extends datatype_base {
         $params = [];
         if (!empty($dataids)) {
             list($cnd, $params) = $DB->get_in_or_equal($dataids);
-            $cnd = ' cm.course ' . $cnd . ' ';
+            $cnd = 'cm.course ' . $cnd . ' ';
         }
+
+        $params2 = [];
+        if (!empty($extra['objectids'])) {
+            list($cnd2, $params2) = $DB->get_in_or_equal($extra['objectids']);
+            $cnd .= (empty($cnd) ? '' : 'AND ') . 'cm.id ' . $cnd2 . ' ';
+        }
+        $params = array_merge($params, $params2);
 
         $tags = tag::get_data([], 'courseobject');
         $competencies = competency::get_data([], 'courseobject');
-        $outcomes = outcome::get_data([], 'courseobject');
+        $extra['module'] = $type;
+        $outcomes = outcome::get_data($dataids, 'courseobject', $extra);
 
         $select = 'SELECT cm.id, cm.course, mm.name as type, m.name, m.intro, m.introformat ';
         $from = 'FROM {course_modules} cm ';
