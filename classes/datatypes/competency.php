@@ -68,25 +68,22 @@ class competency extends datatype_base {
      * @return array The datafields structure.
      */
     public static function get_data($dataids = [], $type = null) {
+        $validtypes = ['user', 'course', 'courseobject'];
         if ($type === null) {
             $type = 'user';
-        }
-
-        if ($type == 'user') {
-            return self::get_user_data($dataids);
-        } else if ($type == 'course') {
-            return self::get_course_data($dataids);
-        } else {
-            throw new \coding_exception('Unknown outcome type: '.$type);
+        } else if (!in_array($type, $validtypes)) {
+            throw new \coding_exception('Unknown competency type: '.$type);
             return false;
         }
+
+        return self::{'get_'.$type.'_data'}($dataids);
     }
 
     /**
      * Internal function to return the user competencies structure for the user id list.
      *
      * @param array $dataids The array of user id's to get competencies for.
-     * @return array The datafields structure.
+     * @return array The competencies structure.
      */
     private static function get_user_data($dataids) {
         global $DB;
@@ -134,7 +131,7 @@ class competency extends datatype_base {
      * Internal function to return the competencies structure for the course id list.
      *
      * @param array $dataids The array of course id's to get competencies for.
-     * @return array The badges structure.
+     * @return array The competencies structure.
      */
     private static function get_course_data($dataids) {
         global $DB;
@@ -156,6 +153,37 @@ class competency extends datatype_base {
         $competenciesrs = $DB->get_recordset_sql($sql, $params);
         $fields = ['id' => 'int', 'name' => 'string:shortname', 'description' => 'text'];
         $competencies = self::create_data_structure($competenciesrs, 'courseid', $fields);
+        $competenciesrs->close();
+
+        return $competencies;
+    }
+
+    /**
+     * Internal function to return the courseobjects structure for the courseobject id list.
+     *
+     * @param array $dataids The array of coursepbject id's to get competencies for.
+     * @return array The competencies structure.
+     */
+    private static function get_courseobject_data($dataids) {
+        global $DB;
+
+        $cnd = '';
+        $params = [];
+        if (!empty($dataids)) {
+            list($cnd, $params) = $DB->get_in_or_equal($dataids);
+            $cnd = 'cm.cmid ' . $cnd . ' ';
+        }
+
+        $select = 'SELECT cm.id, cm.cmid, c.shortname, c.description, c.descriptionformat ';
+        $from = 'FROM {competency_modulecomp} cm ';
+        $join = 'INNER JOIN {competency} c ON cm.competencyid = c.id ';
+        $where = !empty($cnd) ? 'WHERE ' . $cnd : '';
+        $order = 'ORDER BY cm.cmid ASC ';
+        $sql = $select . $from . $join . $where . $order;
+
+        $competenciesrs = $DB->get_recordset_sql($sql, $params);
+        $fields = ['id' => 'int', 'name' => 'string:shortname', 'description' => 'text'];
+        $competencies = self::create_data_structure($competenciesrs, 'cmid', $fields);
         $competenciesrs->close();
 
         return $competencies;

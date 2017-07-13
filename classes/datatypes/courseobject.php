@@ -87,7 +87,9 @@ class courseobject extends datatype_base {
             $cnd = ' cm.course ' . $cnd . ' ';
         }
 
-        $tags = tag::get_data([], 'course_modules');
+        $tags = tag::get_data([], 'courseobject');
+        $competencies = competency::get_data([], 'courseobject');
+        $outcomes = outcome::get_data([], 'courseobject');
 
         $select = 'SELECT cm.id, cm.course, mm.name as type, m.name, m.intro, m.introformat ';
         $from = 'FROM {course_modules} cm ';
@@ -104,8 +106,10 @@ class courseobject extends datatype_base {
             foreach ($courseobject as $objidx => $objectinstance) {
                 $objectinstance['tags'] = isset(
                     $tags[$objectinstance['courseobjectid']]) ? $tags[$objectinstance['courseobjectid']] : [];
-                $objectinstance['competencies'] = [];
-                $objectinstance['outcomes'] = [];
+                $objectinstance['competencies'] = isset(
+                    $competencies[$objectinstance['courseobjectid']]) ? $competencies[$objectinstance['courseobjectid']] : [];
+                $objectinstance['outcomes'] = isset(
+                    $outcomes[$objectinstance['courseobjectid']]) ? $outcomes[$objectinstance['courseobjectid']] : [];
                 $courseobjects[$courseid][$objidx] = $objectinstance;
             }
         }

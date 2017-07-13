@@ -68,25 +68,22 @@ class outcome extends datatype_base {
      * @return array The datafields structure.
      */
     public static function get_data($dataids = [], $type = null) {
+        $validtypes = ['user', 'course', 'courseobject'];
         if ($type === null) {
             $type = 'user';
-        }
-
-        if ($type == 'user') {
-            return self::get_user_data($dataids);
-        } else if ($type == 'course') {
-            return self::get_course_data($dataids);
-        } else {
+        } else if (!in_array($type, $validtypes)) {
             throw new \coding_exception('Unknown outcome type: '.$type);
             return false;
         }
+
+        return self::{'get_'.$type.'_data'}($dataids);
     }
 
     /**
      * Internal function to return the user outcomes structure for the user id list.
      *
      * @param array $dataids The array of user id's to get outcomes for.
-     * @return array The datafields structure.
+     * @return array The outcomes structure.
      */
     private static function get_user_data($dataids) {
         global $DB;
@@ -136,7 +133,7 @@ class outcome extends datatype_base {
      * Internal function to return the competencies structure for the course id list.
      *
      * @param array $dataids The array of course id's to get competencies for.
-     * @return array The badges structure.
+     * @return array The outcomes structure.
      */
     private static function get_course_data($dataids) {
         global $DB;
@@ -158,6 +155,40 @@ class outcome extends datatype_base {
         $outcomesrs = $DB->get_recordset_sql($sql, $params);
         $fields = ['id' => 'int', 'name' => 'string:fullname', 'description' => 'text'];
         $outcomes = self::create_data_structure($outcomesrs, 'courseid', $fields);
+        $outcomesrs->close();
+
+        return $outcomes;
+    }
+
+    /**
+     * Internal function to return the outcomes structure for the courseobject id list.
+     *
+     * @param array $dataids The array of courseobject id's to get outcomes for.
+     * @return array The outcomes structure.
+     */
+    private static function get_courseobject_data($dataids) {
+        global $DB;
+
+        $cnd = '';
+        $params = [];
+        if (!empty($dataids)) {
+            list($cnd, $params) = $DB->get_in_or_equal($dataids);
+            $cnd = 'cm.id ' . $cnd . ' ';
+        }
+
+        $select = 'SELECT gi.id, m.id as modid, cm.id as cmid, o.id as outcomeid, o.fullname, o.description, o.descriptionformat ';
+        $from = 'FROM {grade_items} gi ';
+        $join = 'INNER JOIN {grade_outcomes} o ON gi.outcomeid = o.id ';
+        $join .= 'INNER JOIN {modules} m ON gi.itemmodule = m.name ';
+        $join .= 'INNER JOIN {course_modules} cm ON m.id = cm.module AND gi.iteminstance = cm.instance ';
+        $where = 'WHERE gi.itemtype = ? AND gi.outcomeid IS NOT NULL ';
+        $order = 'ORDER BY modid, cmid ASC ';
+        $sql = $select . $from . $join . $where . $order;
+        $params = array_merge(['mod'], $params);
+
+        $outcomesrs = $DB->get_recordset_sql($sql, $params);
+        $fields = ['id' => 'int:outcomeid', 'name' => 'string:fullname', 'description' => 'text'];
+        $outcomes = self::create_data_structure($outcomesrs, 'cmid', $fields);
         $outcomesrs->close();
 
         return $outcomes;

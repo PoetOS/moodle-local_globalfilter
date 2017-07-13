@@ -63,7 +63,7 @@ class tag extends datatype_base {
     public static function get_data($dataids = [], $type = null) {
         global $DB;
 
-        $validtypes = ['user', 'course', 'course_modules'];
+        $validtypes = ['user', 'course', 'courseobject'];
         if ($type === null) {
             $type = 'user';
         } else if (!in_array($type, $validtypes)) {
