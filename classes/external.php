@@ -333,9 +333,20 @@ class external extends \external_api {
      * @return array the user activity
      */
     public static function get_user_activity($userids = []) {
-        $result = [];
-        return $result;
-    }
+         global $DB;
+
+        $params = self::validate_parameters(self::get_user_activity_parameters(), ['userids' => $userids]);
+        $useractivities = [];
+
+        $events = datatypes\event::get_data($userids, 'user');
+        foreach ($events as $userid => $userevents) {
+            $activity['userid'] = $userid;
+            $activity['events'] = $userevents;
+            $useractivities[] = $activity;
+        }
+
+        return $useractivities;
+   }
 
     /**
      * Describes the get_user_activity return value.
@@ -346,19 +357,7 @@ class external extends \external_api {
         return new \external_multiple_structure(
             new \external_single_structure(
                 ['userid' => new \external_value(PARAM_INT, 'User id'),
-                 'events' => new \external_multiple_structure(
-                    new \external_single_structure(
-                        ['eventname' => new \external_value(PARAM_TEXT, 'Event name.'),
-                         'component' => new \external_value(PARAM_TEXT, 'Component name.'),
-                         'action' => new \external_value(PARAM_TEXT, 'The event action.'),
-                         'courseobjectid' => new \external_value(PARAM_INT, 'Course object id.'),
-                         'courseid' => new \external_value(PARAM_INT, 'Course id.'),
-                         'eventtime' => new \external_value(PARAM_INT, 'Event activity timestamp.'),
-                        ],
-                        'event'
-                    ),
-                    'events'
-                 ),
+                 'events' => new \external_multiple_structure(datatypes\event::structure(), 'events'),
                 ],
                 'user'
             ),
