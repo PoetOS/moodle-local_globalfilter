@@ -346,7 +346,7 @@ class external extends \external_api {
         }
 
         return $useractivities;
-   }
+    }
 
     /**
      * Describes the get_user_activity return value.

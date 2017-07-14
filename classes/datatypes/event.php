@@ -68,7 +68,6 @@ class event extends datatype_base {
     public static function get_data($dataids = [], $type = null, $extra = null) {
         global $DB;
 
-
         $actions = ['loggedin', 'loggedout', 'searched', 'started', 'submitted', 'updated', 'uploaded', 'viewed'];
         list($cnd, $params) = $DB->get_in_or_equal($actions);
         $cnd = '(l.action ' . $cnd . ') ';
