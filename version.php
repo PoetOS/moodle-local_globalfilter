@@ -26,7 +26,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_globalfilter';
-$plugin->release = 'Alpha 3.3.0 (Build - 2017061600)';
+$plugin->release = 'Alpha 3.0.0 (Build - 2017061600)';
 $plugin->version = 2017061602;
-$plugin->requires = 2017051500;
+$plugin->requires = 2015111603;
 $plugin->maturity = MATURITY_ALPHA;
