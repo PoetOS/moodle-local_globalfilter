@@ -69,27 +69,9 @@ class competency extends datatype_base {
      * @return array The datafields structure.
      */
     public static function get_data($dataids = [], $type = null, $extra = null) {
-        if ($type === null) {
-            $type = 'user';
-        }
 
-        switch ($type) {
-            case 'user':
-                return self::get_user_data($dataids);
-                break;
-
-            case 'course':
-                return self::get_course_data($dataids);
-                break;
-
-            case 'courseobject':
-                return self::get_courseobject_data($dataids);
-                break;
-
-            default:
-                throw new \coding_exception('Unknown competency type: '.$type);
-                return false;
-        }
+        // Moodle 3.0 does not have competencies.
+        return [];
     }
 
     /**
