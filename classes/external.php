@@ -50,6 +50,8 @@ class external extends \external_api {
                 ['ids' => new \external_multiple_structure(
                     new \external_value(PARAM_INT, 'User id'), 'Array of user ids', VALUE_OPTIONAL),
                 ], 'Users - operator OR is used', VALUE_DEFAULT, []),
+             'lastuserid' => new \external_value(PARAM_INT,
+                'Last user id retrieved; only user id\'s higher than this will be returned.', VALUE_OPTIONAL),
             ]
         );
     }
@@ -59,27 +61,37 @@ class external extends \external_api {
      * if no users are provided, all users' profile data will be returned.
      *
      * @param array $users The users parameters.
+     * @param int $lastuserid The last retrieved user id; only user id's higher than this will be returned.
      * @return array The user(s) details.
      */
-    public static function get_user_profile($users = []) {
+    public static function get_user_profile($users = [], $lastuserid = 0) {
         global $DB;
 
         $params = self::validate_parameters(self::get_user_profile_parameters(), ['users' => $users]);
+
+        $recordlimit = 50;
         $userprofiles = [];
+        $extra = [];
 
         $ufields = 'id,lang,firstaccess,lastaccess,lastlogin,description,descriptionformat';
-        if (!array_key_exists('ids', $params['users']) || empty($params['users']['ids'])) {
-            $userrs = $DB->get_recordset('user', null, 'id', $ufields);
+        if (!empty($lastuserid)) {
+            $select = 'id > ?';
+            $params = [$lastuserid];
+            $userrs = $DB->get_recordset_select('user', $select, $params, 'id', $ufields, 0, $recordlimit);
+            $userids = [];
+            $extra = ['lastuserid' => $lastuserid];
+        } else if (!array_key_exists('ids', $params['users']) || empty($params['users']['ids'])) {
+            $userrs = $DB->get_recordset('user', null, 'id', $ufields, 0, $recordlimit);
             $userids = [];
         } else {
             $userids = $params['users']['ids'];
-            $userrs = $DB->get_recordset_list('user', 'id', $userids, 'id', $ufields);
+            $userrs = $DB->get_recordset_list('user', 'id', $userids, 'id', $ufields, 0, $recordlimit);
         }
 
-        $datafields = datatypes\datafield::get_data($userids, 'user');
-        $tags = datatypes\tag::get_data($userids, 'user');
-        $badges = datatypes\badge_instance::get_data($userids, 'user');
-        $enrolments = datatypes\enrolment::get_data($userids, 'user');
+        $datafields = datatypes\datafield::get_data($userids, 'user', $extra);
+        $tags = datatypes\tag::get_data($userids, 'user', $extra);
+        $badges = datatypes\badge_instance::get_data($userids, 'user', $extra);
+        $enrolments = datatypes\enrolment::get_data($userids, 'user', $extra);
 
         foreach ($userrs as $user) {
             $userprofile = [];

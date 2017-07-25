@@ -74,7 +74,7 @@ class badge extends datatype_base {
         }
 
         if ($type == 'user') {
-            return self::get_user_data($dataids);
+            return self::get_user_data($dataids, $extra);
         } else if ($type == 'course') {
             return self::get_course_data($dataids);
         } else {
@@ -87,14 +87,18 @@ class badge extends datatype_base {
      * Internal function to return the user badges structure for the user id list.
      *
      * @param array $dataids The array of user id's to get badges for.
+     * @param array $extra Optional extra parameters to be used by the implementation.
      * @return array The datafields structure.
      */
-    private static function get_user_data($dataids) {
+    private static function get_user_data($dataids, $extra) {
         global $DB;
 
         $cnd = '';
         $params = [];
-        if (!empty($dataids)) {
+        if (!empty($extra) && !empty($extra['lastuserid'])) {
+            $cnd = 'bi.userid > ? ';
+            $params = [$extra['lastuserid']];
+        } else if (!empty($dataids)) {
             list($cnd, $params) = $DB->get_in_or_equal($dataids);
             $cnd = 'bi.userid ' . $cnd . ' ';
         }
