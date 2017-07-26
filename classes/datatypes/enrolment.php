@@ -79,9 +79,15 @@ class enrolment extends datatype_base {
 
         $cnd = '';
         $params = [];
-        if (!empty($extra) && !empty($extra['firstuserid'])) {
-            $cnd = ' AND ue.userid > ? ';
-            $params = [$extra['firstuserid']];
+        if (is_array($extra)) {
+            if (isset($extra['firstuserid'])) {
+                $cnd = ' AND (ue.userid > ?) ';
+                $params[] = $extra['firstuserid'];
+            }
+            if (isset($extra['lastuserid'])) {
+                $cnd .= ' AND (ue.userid <= ?)';
+                $params[] = $extra['lastuserid'];
+            }
         } else if (!empty($dataids)) {
             list($cnd, $params) = $DB->get_in_or_equal($dataids);
             $cnd = ' AND ue.userid ' . $cnd;
