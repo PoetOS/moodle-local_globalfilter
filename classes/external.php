@@ -186,7 +186,7 @@ class external extends \external_api {
         $params = self::validate_parameters(self::get_course_profile_parameters(), ['courses' => $courses]);
         $courseprofiles = [];
 
-        $cfields = 'id,fullname,summary,summaryformat,startdate,0 AS enddate';
+        $cfields = 'id,fullname,summary,summaryformat,startdate,enddate';
         if (!array_key_exists('ids', $params['courses']) || empty($params['courses']['ids'])) {
             $coursesrs = $DB->get_recordset('course', null, 'id', $cfields);
             $courseids = [];
