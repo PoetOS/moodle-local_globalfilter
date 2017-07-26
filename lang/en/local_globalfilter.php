@@ -25,4 +25,5 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$string['pluginname'] = 'local_globalfilter';
+$string['recordlimit'] = 'Number of user records to return at one time.';
+$string['pluginname'] = 'Globalfilter Webservices';

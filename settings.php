@@ -25,6 +25,10 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-if ($ADMIN->fulltree) {
-    $nothing = true;
+if ($hassiteconfig) {
+    $ADMIN->add('localplugins', new admin_category('globalfilter', get_string('pluginname', 'local_globalfilter')));
+    $settings = new admin_settingpage('local_globalfilter', get_string('settings'));
+    $settings->add(new admin_setting_configtext('local_globalfilter/recordlimit',
+        new lang_string('recordlimit', 'local_globalfilter'), '', '50', PARAM_INT));
+    $ADMIN->add('globalfilter', $settings);
 }

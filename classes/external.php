@@ -67,9 +67,13 @@ class external extends \external_api {
     public static function get_user_profile($users = [], $firstuserid = 0) {
         global $DB;
 
-        $params = self::validate_parameters(self::get_user_profile_parameters(), ['users' => $users]);
+        $params = self::validate_parameters(self::get_user_profile_parameters(),
+            ['users' => $users, 'firstuserid' => $firstuserid]);
+        $users = $params['users'];
+        $firstuserid = $params['firstuserid'];
 
-        $recordlimit = 50;
+        $recordlimit = get_config('local_globalfilter', 'recordlimit');
+        $recordlimit = empty($recordlimit) ? 50 : $recordlimit;
         $userprofiles = [];
         $extra = [];
 
@@ -91,7 +95,7 @@ class external extends \external_api {
                 $extra['lastuserid'] = $DB->get_field_sql($sql, $params);
             }
 
-        } else if (!array_key_exists('ids', $params['users']) || empty($params['users']['ids'])) {
+        } else if (!array_key_exists('ids', $users) || empty($users['ids'])) {
             // If no list provided, return all user records up to the recordlimit.
             $userrs = $DB->get_recordset('user', ['deleted' => 0], 'id', $ufields, 0, $recordlimit);
             $userids = [];
@@ -106,7 +110,7 @@ class external extends \external_api {
 
         } else {
             // Else a list of users was provided, only get those.
-            $userids = $params['users']['ids'];
+            $userids = $users['ids'];
             $userrs = $DB->get_recordset_list('user', 'id', $userids, 'id', $ufields, 0, $recordlimit);
         }
 
@@ -282,6 +286,8 @@ class external extends \external_api {
 
         $params = self::validate_parameters(self::get_course_object_profile_parameters(),
             ['courseids' => $courseids, 'courseobjectids' => $courseobjectids]);
+        $courseids = $params['courseids'];
+        $courseobjectids = $params['courseobjectids'];
         $cobjprofiles = [];
 
         $cnd = '';
@@ -352,11 +358,7 @@ class external extends \external_api {
      * @return \external_function_parameters
      */
     public static function get_user_activity_parameters() {
-        return new \external_function_parameters (
-            ['userids' => new \external_multiple_structure(
-                new \external_value(PARAM_INT, 'user id'), 'Array of user ids', VALUE_DEFAULT, []),
-            ]
-        );
+        return new \external_function_parameters(['userid' => new \external_value(PARAM_INT, 'User id', VALUE_REQUIRED)]);
     }
 
     /**
@@ -366,15 +368,16 @@ class external extends \external_api {
      * @param array $userids the user ids
      * @return array the user activity
      */
-    public static function get_user_activity($userids = []) {
+    public static function get_user_activity($userid = 0) {
          global $DB;
 
-        $params = self::validate_parameters(self::get_user_activity_parameters(), ['userids' => $userids]);
+        $params = self::validate_parameters(self::get_user_activity_parameters(), ['userid' => $userid]);
+        $userid = $params['userid'];
         $useractivities = [];
 
-        $events = datatypes\event::get_data($userids, 'user');
-        foreach ($events as $userid => $userevents) {
-            $activity['userid'] = $userid;
+        $events = datatypes\event::get_data($userid, 'user');
+        foreach ($events as $uid => $userevents) {
+            $activity['userid'] = $uid;
             $activity['events'] = $userevents;
             $useractivities[] = $activity;
         }
