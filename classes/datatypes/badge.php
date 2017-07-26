@@ -95,9 +95,15 @@ class badge extends datatype_base {
 
         $cnd = '';
         $params = [];
-        if (!empty($extra) && !empty($extra['firstuserid'])) {
-            $cnd = 'bi.userid > ? ';
-            $params = [$extra['firstuserid']];
+        if (is_array($extra)) {
+            if (isset($extra['firstuserid'])) {
+                $cnd = '(bi.userid > ?) ';
+                $params[] = $extra['firstuserid'];
+            }
+            if (isset($extra['lastuserid'])) {
+                $cnd = !empty($cnd) ? $cnd . 'AND (bi.userid <= ?) ' : '(bi.userid <= ?) ';
+                $params[] = $extra['lastuserid'];
+            }
         } else if (!empty($dataids)) {
             list($cnd, $params) = $DB->get_in_or_equal($dataids);
             $cnd = 'bi.userid ' . $cnd . ' ';
