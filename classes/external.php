@@ -50,8 +50,8 @@ class external extends \external_api {
                 ['ids' => new \external_multiple_structure(
                     new \external_value(PARAM_INT, 'User id'), 'Array of user ids', VALUE_OPTIONAL),
                 ], 'Users - operator OR is used', VALUE_DEFAULT, []),
-             'lastuserid' => new \external_value(PARAM_INT,
-                'Last user id retrieved; only user id\'s higher than this will be returned.', VALUE_OPTIONAL),
+             'firstuserid' => new \external_value(PARAM_INT,
+                'First user id retrieved; only user id\'s higher than this will be returned.', VALUE_DEFAULT, 0),
             ]
         );
     }
@@ -61,10 +61,10 @@ class external extends \external_api {
      * if no users are provided, all users' profile data will be returned.
      *
      * @param array $users The users parameters.
-     * @param int $lastuserid The last retrieved user id; only user id's higher than this will be returned.
+     * @param int $firstuserid The last retrieved user id; only user id's higher than this will be returned.
      * @return array The user(s) details.
      */
-    public static function get_user_profile($users = [], $lastuserid = 0) {
+    public static function get_user_profile($users = [], $firstuserid = 0) {
         global $DB;
 
         $params = self::validate_parameters(self::get_user_profile_parameters(), ['users' => $users]);
@@ -74,16 +74,38 @@ class external extends \external_api {
         $extra = [];
 
         $ufields = 'id,lang,firstaccess,lastaccess,lastlogin,description,descriptionformat';
-        if (!empty($lastuserid)) {
-            $select = 'id > ?';
-            $params = [$lastuserid];
+
+        if (!empty($firstuserid)) {
+            // If firstuserid is specified, get userids higher that that.
+            $select = '(deleted = ?) AND (id > ?)';
+            $params = [0, $firstuserid];
             $userrs = $DB->get_recordset_select('user', $select, $params, 'id', $ufields, 0, $recordlimit);
             $userids = [];
-            $extra = ['lastuserid' => $lastuserid];
+            $extra['firstuserid'] = $firstuserid;
+            if (!empty($recordlimit)) {
+                // Get the last userid we should use. We can't ask for the last key in a recordset unfortunately.
+                $sql = 'SELECT MAX(id) AS lastuserid ' .
+                    'FROM (SELECT id FROM {user} WHERE ' . $select . ' ' .
+                    'ORDER BY id ASC ' .
+                    'LIMIT ' . $recordlimit . ') tmp';
+                $extra['lastuserid'] = $DB->get_field_sql($sql, $params);
+            }
+
         } else if (!array_key_exists('ids', $params['users']) || empty($params['users']['ids'])) {
-            $userrs = $DB->get_recordset('user', null, 'id', $ufields, 0, $recordlimit);
+            // If no list provided, return all user records up to the recordlimit.
+            $userrs = $DB->get_recordset('user', ['deleted' => 0], 'id', $ufields, 0, $recordlimit);
             $userids = [];
+            if (!empty($recordlimit)) {
+                // Get the last userid we should use. We can't ask for the last key in a recordset unfortunately.
+                $sql = 'SELECT MAX(id) AS lastuserid ' .
+                    'FROM (SELECT id FROM {user} WHERE deleted = ? ' .
+                    'ORDER BY id ASC ' .
+                    'LIMIT ' . $recordlimit . ') tmp';
+                $extra['lastuserid'] = $DB->get_field_sql($sql, [0]);
+            }
+
         } else {
+            // Else a list of users was provided, only get those.
             $userids = $params['users']['ids'];
             $userrs = $DB->get_recordset_list('user', 'id', $userids, 'id', $ufields, 0, $recordlimit);
         }
@@ -164,7 +186,7 @@ class external extends \external_api {
         $params = self::validate_parameters(self::get_course_profile_parameters(), ['courses' => $courses]);
         $courseprofiles = [];
 
-        $cfields = 'id,fullname,summary,summaryformat,startdate,enddate';
+        $cfields = 'id,fullname,summary,summaryformat,startdate,0 AS enddate';
         if (!array_key_exists('ids', $params['courses']) || empty($params['courses']['ids'])) {
             $coursesrs = $DB->get_recordset('course', null, 'id', $cfields);
             $courseids = [];

@@ -75,9 +75,15 @@ class datafield extends datatype_base {
 
         $cnd = '';
         $params = [];
-        if (!empty($extra) && !empty($extra['lastuserid'])) {
-            $cnd = 'uid.userid > ? ';
-            $params = [$extra['lastuserid']];
+        if (is_array($extra)) {
+            if (isset($extra['firstuserid'])) {
+                $cnd = '(uid.userid > ?) ';
+                $params[] = $extra['firstuserid'];
+            }
+            if (isset($extra['lastuserid'])) {
+                $cnd = !empty($cnd) ? $cnd . 'AND (uid.userid <= ?) ' : '(uid.userid <= ?) ';
+                $params[] = $extra['lastuserid'];
+            }
         } else if (!empty($dataids)) {
             list($cnd, $params) = $DB->get_in_or_equal($dataids);
             $cnd = 'uid.userid ' . $cnd . ' ';

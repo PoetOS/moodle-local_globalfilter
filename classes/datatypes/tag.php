@@ -74,9 +74,9 @@ class tag extends datatype_base {
 
         $cnd = '';
         $params = [];
-        if (($type == 'user') && !empty($extra) && !empty($extra['lastuserid'])) {
+        if (($type == 'user') && !empty($extra) && !empty($extra['firstuserid'])) {
             $cnd = 'AND ti.itemid > ? ';
-            $params = [$extra['lastuserid']];
+            $params = [$extra['firstuserid']];
         } else if (!empty($dataids)) {
             list($cnd, $params) = $DB->get_in_or_equal($dataids);
             $cnd = 'AND ti.itemid ' . $cnd . ' ';
